@@ -1,0 +1,179 @@
+.page {
+  position: relative;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  padding: 28px 18px;
+  background: radial-gradient(1200px 800px at 15% 20%, rgba(120, 119, 198, 0.22), transparent 55%),
+    radial-gradient(900px 700px at 85% 20%, rgba(45, 212, 191, 0.14), transparent 55%),
+    radial-gradient(1100px 900px at 50% 95%, rgba(59, 130, 246, 0.16), transparent 50%),
+    linear-gradient(180deg, #070a12 0%, #0b1020 60%, #070a12 100%);
+}
+
+.bg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.blobA,
+.blobB,
+.blobC {
+  position: absolute;
+  width: 520px;
+  height: 520px;
+  border-radius: 999px;
+  filter: blur(48px);
+  opacity: 0.75;
+  transform: translateZ(0);
+}
+
+.blobA {
+  left: -120px;
+  top: -160px;
+  background: radial-gradient(circle at 30% 30%, rgba(99, 102, 241, 0.85), rgba(99, 102, 241, 0.05) 62%);
+}
+
+.blobB {
+  right: -140px;
+  top: -120px;
+  background: radial-gradient(circle at 30% 30%, rgba(45, 212, 191, 0.75), rgba(45, 212, 191, 0.05) 60%);
+}
+
+.blobC {
+  left: 35%;
+  bottom: -220px;
+  width: 620px;
+  height: 620px;
+  background: radial-gradient(circle at 30% 30%, rgba(59, 130, 246, 0.7), rgba(59, 130, 246, 0.04) 62%);
+}
+
+.container {
+  position: relative;
+  width: min(1080px, 100%);
+  display: grid;
+  grid-template-columns: 1.05fr 1fr;
+  gap: 28px;
+  align-items: stretch;
+}
+
+.left {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 16px 10px;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.brandRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(10px);
+}
+
+.mark {
+  width: 22px;
+  height: 22px;
+  border-radius: 8px;
+  background: conic-gradient(from 210deg, #22c55e, #3b82f6, #a78bfa, #22c55e);
+  box-shadow: 0 12px 30px rgba(59, 130, 246, 0.22);
+}
+
+.brandText {
+  font-weight: 800;
+  letter-spacing: 0.2px;
+}
+
+.heroTitle {
+  margin: 18px 0 10px;
+  font-size: clamp(28px, 3.2vw, 44px);
+  line-height: 1.06;
+  letter-spacing: -0.02em;
+}
+
+.heroCopy {
+  margin: 0;
+  max-width: 44ch;
+  color: rgba(255, 255, 255, 0.76);
+  font-size: 14.5px;
+  line-height: 1.65;
+}
+
+.trustRow {
+  margin-top: 18px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.trustPill {
+  font-size: 12px;
+  padding: 8px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.right {
+  display: grid;
+  align-items: center;
+}
+
+.card {
+  width: 100%;
+  border-radius: 18px;
+  background: rgba(12, 18, 34, 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(14px);
+}
+
+.cardHeader {
+  padding: 18px 18px 0;
+}
+
+.headline {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.93);
+  font-size: 20px;
+  letter-spacing: -0.01em;
+}
+
+.subhead {
+  margin: 8px 0 0;
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.cardBody {
+  padding: 18px;
+}
+
+.cardFooter {
+  padding: 0 18px 18px;
+}
+
+@media (max-width: 900px) {
+  .container {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .left {
+    padding: 6px 6px 0;
+    justify-content: flex-start;
+  }
+
+  .right {
+    align-items: start;
+  }
+}
+
