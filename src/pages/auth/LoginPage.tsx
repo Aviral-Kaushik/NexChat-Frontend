@@ -5,7 +5,7 @@ import styles from './LoginPage.module.css'
 
 import { login } from '../../api/auth'
 import { getApiErrorMessage } from '../../api/errors'
-import { setToken } from '../../api/token'
+import { setToken, setUserName } from '../../api/token'
 
 export function LoginPage() {
   const usernameId = useId()
@@ -40,6 +40,7 @@ export function LoginPage() {
         console.log('[ui][login] success', { tokenLength: token?.length ?? 0 })
       }
       setToken(token)
+      setUserName(username)
       navigate('/chats', { replace: true })
     } catch (err) {
       if (import.meta.env.DEV) {

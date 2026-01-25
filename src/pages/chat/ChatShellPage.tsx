@@ -1,9 +1,11 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import styles from './ChatShellPage.module.css'
 
+import { connectRoomSocket, type RoomSocket } from '../../api/chatSocket'
 import { getApiErrorMessage } from '../../api/errors'
 import { getRoomMessages, type Message as BackendMessage } from '../../api/messages'
 import { createRoom, joinRoom } from '../../api/rooms'
+import { getUserName } from '../../api/token'
 
 type ChatPreview = {
   id: string
@@ -42,12 +44,19 @@ function parseLocalDateTime(input: string | null | undefined): number {
   return Number.isFinite(t) ? t : Date.now()
 }
 
+function resolveFrom(sender: string | null | undefined): ChatMessage['from'] {
+  const lowerSender = sender?.toLowerCase?.() ?? ''
+  if (lowerSender === 'system') return 'system'
+  const me = getUserName()?.toLowerCase?.() ?? ''
+  if (me && lowerSender === me) return 'me'
+  return 'other'
+}
+
 function mapBackendMessages(chatId: string, roomId: string, list: BackendMessage[]): ChatMessage[] {
   const mapped = list.map((m): ChatMessage => {
     const createdAt = parseLocalDateTime(m.timestamp)
     const sender = m.sender
-    const lowerSender = sender?.toLowerCase?.() ?? ''
-    const from: ChatMessage['from'] = lowerSender === 'system' ? 'system' : 'other'
+    const from: ChatMessage['from'] = resolveFrom(sender)
 
     const text = typeof m.content === 'string' && m.content.trim().length > 0 ? m.content : undefined
     const attachment =
@@ -179,6 +188,7 @@ export function ChatShellPage() {
   const [draft, setDraft] = useState('')
   const [attachedFile, setAttachedFile] = useState<File | null>(null)
   const [messagesLoadingFor, setMessagesLoadingFor] = useState<string | null>(null)
+  const roomSocketRef = useRef<RoomSocket | null>(null)
 
   const messages = useMemo(() => {
     if (!selectedId) return []
@@ -220,6 +230,87 @@ export function ChatShellPage() {
 
     return () => {
       cancelled = true
+    }
+  }, [selectedId])
+
+  useEffect(() => {
+    // Leaving room (or selecting a non-room chat): disconnect the stomp client.
+    if (!selectedId) {
+      roomSocketRef.current?.disconnect()
+      roomSocketRef.current = null
+      return
+    }
+
+    const roomId = chatIdToRoomId(selectedId)
+    if (!roomId) {
+      roomSocketRef.current?.disconnect()
+      roomSocketRef.current = null
+      return
+    }
+
+    // Switching rooms: disconnect previous connection first.
+    roomSocketRef.current?.disconnect()
+    roomSocketRef.current = null
+
+    const currentChatId = selectedId
+    const socket = connectRoomSocket({
+      roomId,
+      onMessage: (body) => {
+        if (import.meta.env.DEV) console.log('[ws] received', { roomId, body })
+
+        let parsed: unknown = null
+        try {
+          parsed = JSON.parse(body)
+        } catch {
+          parsed = null
+        }
+
+        if (!parsed || typeof parsed !== 'object') {
+          const sys: ChatMessage = {
+            id: `sys:${Date.now()}`,
+            chatId: currentChatId,
+            from: 'system',
+            text: 'Received an invalid message payload.',
+            createdAt: Date.now(),
+          }
+          setMessagesByChat((prev) => ({
+            ...prev,
+            [currentChatId]: [...(prev[currentChatId] ?? []), sys],
+          }))
+          return
+        }
+
+        const m = parsed as BackendMessage
+        const mapped = mapBackendMessages(currentChatId, roomId, [m])[0]
+        if (!mapped) return
+
+        setMessagesByChat((prev) => {
+          const existing = prev[currentChatId] ?? []
+          if (existing.some((x) => x.id === mapped.id)) return prev
+          return { ...prev, [currentChatId]: [...existing, mapped] }
+        })
+      },
+      onError: (err) => {
+        const sys: ChatMessage = {
+          id: `sys:${Date.now()}`,
+          chatId: currentChatId,
+          from: 'system',
+          text: `WebSocket error: ${getApiErrorMessage(err)}`,
+          createdAt: Date.now(),
+        }
+        setMessagesByChat((prev) => ({
+          ...prev,
+          [currentChatId]: [...(prev[currentChatId] ?? []), sys],
+        }))
+      },
+    })
+
+    roomSocketRef.current = socket
+
+    return () => {
+      // Requirement: disconnect when leaving the room
+      socket.disconnect()
+      if (roomSocketRef.current === socket) roomSocketRef.current = null
     }
   }, [selectedId])
 
@@ -332,6 +423,53 @@ export function ChatShellPage() {
     if (!selectedId) return
     const text = draft.trim()
     if (text.length === 0 && !attachedFile) return
+
+    const roomId = chatIdToRoomId(selectedId)
+    if (roomId) {
+      if (attachedFile) {
+        const sys: ChatMessage = {
+          id: `sys:${Date.now()}`,
+          chatId: selectedId,
+          from: 'system',
+          text: 'File sending is not wired yet. Please send a text message for now.',
+          createdAt: Date.now(),
+        }
+        setMessagesByChat((prev) => ({
+          ...prev,
+          [selectedId]: [...(prev[selectedId] ?? []), sys],
+        }))
+        return
+      }
+
+      const socket = roomSocketRef.current
+      if (!socket || socket.roomId !== roomId || !socket.connected()) {
+        const sys: ChatMessage = {
+          id: `sys:${Date.now()}`,
+          chatId: selectedId,
+          from: 'system',
+          text: 'Not connected to the room yet. Please wait a moment and try again.',
+          createdAt: Date.now(),
+        }
+        setMessagesByChat((prev) => ({
+          ...prev,
+          [selectedId]: [...(prev[selectedId] ?? []), sys],
+        }))
+        return
+      }
+
+      const sender = getUserName() ?? 'anonymous'
+      const payload = {
+        roomId,
+        sender,
+        content: text,
+        type: 'TEXT',
+        timestamp: new Date().toISOString(),
+      }
+
+      socket.sendJson(`/app/sendMessage/${roomId}`, payload)
+      setDraft('')
+      return
+    }
 
     const msg: ChatMessage = {
       id: `m:${Date.now()}:${Math.random().toString(16).slice(2)}`,

@@ -5,7 +5,7 @@ import styles from './SignupPage.module.css'
 
 import { login, signup } from '../../api/auth'
 import { getApiErrorMessage } from '../../api/errors'
-import { setToken } from '../../api/token'
+import { setToken, setUserName } from '../../api/token'
 
 export function SignupPage() {
   const usernameId = useId()
@@ -51,6 +51,7 @@ export function SignupPage() {
         console.log('[ui][signup] login success', { tokenLength: token?.length ?? 0 })
       }
       setToken(token)
+      setUserName(username)
       navigate('/chats', { replace: true })
     } catch (err) {
       if (import.meta.env.DEV) {
