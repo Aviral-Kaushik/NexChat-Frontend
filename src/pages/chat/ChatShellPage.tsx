@@ -1,6 +1,10 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import styles from './ChatShellPage.module.css'
 
+import { getApiErrorMessage } from '../../api/errors'
+import { getRoomMessages, type Message as BackendMessage } from '../../api/messages'
+import { createRoom, joinRoom } from '../../api/rooms'
+
 type ChatPreview = {
   id: string
   name: string
@@ -15,17 +19,60 @@ type RoomAction = 'create' | 'join'
 type ChatMessage = {
   id: string
   chatId: string
-  from: 'me' | 'system'
+  from: 'me' | 'other' | 'system'
+  sender?: string
   text?: string
   attachment?: {
     name: string
     size: number
+    downloadUrl?: string
+    mimeType?: string
   }
   createdAt: number
 }
 
-function sleep(ms: number) {
-  return new Promise<void>((resolve) => setTimeout(resolve, ms))
+function chatIdToRoomId(chatId: string): string | null {
+  if (!chatId.startsWith('room:')) return null
+  return chatId.slice('room:'.length)
+}
+
+function parseLocalDateTime(input: string | null | undefined): number {
+  if (!input) return Date.now()
+  const t = Date.parse(input)
+  return Number.isFinite(t) ? t : Date.now()
+}
+
+function mapBackendMessages(chatId: string, roomId: string, list: BackendMessage[]): ChatMessage[] {
+  const mapped = list.map((m): ChatMessage => {
+    const createdAt = parseLocalDateTime(m.timestamp)
+    const sender = m.sender
+    const lowerSender = sender?.toLowerCase?.() ?? ''
+    const from: ChatMessage['from'] = lowerSender === 'system' ? 'system' : 'other'
+
+    const text = typeof m.content === 'string' && m.content.trim().length > 0 ? m.content : undefined
+    const attachment =
+      m.type === 'FILE' && m.file
+        ? {
+            name: m.file.originalName || m.file.storedName || 'Attachment',
+            size: m.file.size ?? 0,
+            downloadUrl: m.file.downloadUrl,
+            mimeType: m.file.mimeType,
+          }
+        : undefined
+
+    return {
+      id: m.messageId ? `srv:${m.messageId}` : `srv:${roomId}:${createdAt}`,
+      chatId,
+      from,
+      sender,
+      text,
+      attachment,
+      createdAt,
+    }
+  })
+
+  mapped.sort((a, b) => a.createdAt - b.createdAt)
+  return mapped
 }
 
 function Icon({
@@ -131,11 +178,50 @@ export function ChatShellPage() {
   )
   const [draft, setDraft] = useState('')
   const [attachedFile, setAttachedFile] = useState<File | null>(null)
+  const [messagesLoadingFor, setMessagesLoadingFor] = useState<string | null>(null)
 
   const messages = useMemo(() => {
     if (!selectedId) return []
     return messagesByChat[selectedId] ?? []
   }, [messagesByChat, selectedId])
+
+  useEffect(() => {
+    if (!selectedId) return
+    const roomId = chatIdToRoomId(selectedId)
+    if (!roomId) return
+
+    let cancelled = false
+    setMessagesLoadingFor(selectedId)
+
+    void (async () => {
+      try {
+        const list = await getRoomMessages(roomId)
+        if (cancelled) return
+
+        const mapped = mapBackendMessages(selectedId, roomId, Array.isArray(list) ? list : [])
+        setMessagesByChat((prev) => {
+          if (mapped.length === 0) return prev
+          return { ...prev, [selectedId]: mapped }
+        })
+      } catch (err) {
+        if (cancelled) return
+        const msg: ChatMessage = {
+          id: `sys:${Date.now()}`,
+          chatId: selectedId,
+          from: 'system',
+          text: `Failed to load messages: ${getApiErrorMessage(err)}`,
+          createdAt: Date.now(),
+        }
+        setMessagesByChat((prev) => ({ ...prev, [selectedId]: [msg] }))
+      } finally {
+        if (!cancelled) setMessagesLoadingFor(null)
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [selectedId])
 
   useEffect(() => {
     if (!roomAction) return
@@ -182,33 +268,16 @@ export function ChatShellPage() {
     setRoomError(null)
 
     try {
-      // TODO: Replace this mock with backend API call.
-      await sleep(750)
-
-      // Mock backend error examples:
-      if (
-        action === 'join' &&
-        (normalized === '404' || normalized.toLowerCase() === 'not-found')
-      ) {
-        setRoomError('Room not found. Double-check the Room ID and try again.')
-        return
-      }
-      if (
-        action === 'create' &&
-        (normalized.toLowerCase() === 'taken' || normalized.toLowerCase() === 'exists')
-      ) {
-        setRoomError('That Room ID is already taken. Try a different one.')
-        return
-      }
-      if (normalized.toLowerCase() === 'error') {
-        setRoomError('Something went wrong on our side. Please try again in a moment.')
-        return
-      }
-
       const finalId =
         normalized.length > 0
           ? normalized
           : `room-${Math.random().toString(36).slice(2, 8)}`
+
+      if (action === 'create') {
+        await createRoom(finalId)
+      } else {
+        await joinRoom(finalId)
+      }
 
       const newRoom: ChatPreview = {
         id: `room:${finalId}`,
@@ -244,6 +313,8 @@ export function ChatShellPage() {
 
       setSelectedId(newRoom.id)
       closeRoomDialog()
+    } catch (err) {
+      setRoomError(getApiErrorMessage(err))
     } finally {
       setRoomBusy(false)
     }
@@ -401,7 +472,18 @@ export function ChatShellPage() {
 
               <div className={styles.conversation}>
                 <div className={styles.messages} aria-label="Messages">
-                  {messages.length === 0 ? (
+                  {messagesLoadingFor === selectedId ? (
+                    <div className={styles.emptyCenter}>
+                      <div className={styles.illus} aria-hidden="true">
+                        <div className={styles.illusRing} />
+                        <div className={styles.illusCore}>
+                          <span className={styles.illusMark} />
+                        </div>
+                      </div>
+                      <h2 className={styles.emptyTitle}>Loading messages…</h2>
+                      <p className={styles.emptyCopy}>Fetching the latest messages for this room.</p>
+                    </div>
+                  ) : messages.length === 0 ? (
                     <div className={styles.emptyCenter}>
                       <div className={styles.illus} aria-hidden="true">
                         <div className={styles.illusRing} />
@@ -428,9 +510,18 @@ export function ChatShellPage() {
                               {m.text ? <div className={styles.bubbleText}>{m.text}</div> : null}
                               {m.attachment ? (
                                 <div className={styles.bubbleAttachment}>
-                                  <div className={styles.attachmentName}>
-                                    {m.attachment.name}
-                                  </div>
+                                  {m.attachment.downloadUrl ? (
+                                    <a
+                                      className={styles.attachmentName}
+                                      href={m.attachment.downloadUrl}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                    >
+                                      {m.attachment.name}
+                                    </a>
+                                  ) : (
+                                    <div className={styles.attachmentName}>{m.attachment.name}</div>
+                                  )}
                                   <div className={styles.attachmentSize}>
                                     {formatFileSize(m.attachment.size)}
                                   </div>
