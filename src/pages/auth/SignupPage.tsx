@@ -1,17 +1,18 @@
 import { useId, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { AuthLayout } from './AuthLayout'
 import styles from './SignupPage.module.css'
 
-function sleep(ms: number) {
-  return new Promise<void>((resolve) => setTimeout(resolve, ms))
-}
+import { login, signup } from '../../api/auth'
+import { getApiErrorMessage } from '../../api/errors'
+import { setToken } from '../../api/token'
 
 export function SignupPage() {
   const usernameId = useId()
   const emailId = useId()
   const passwordId = useId()
   const confirmPasswordId = useId()
+  const navigate = useNavigate()
 
   const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
@@ -20,6 +21,7 @@ export function SignupPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   const passwordMismatch = confirmPassword.length > 0 && password !== confirmPassword
 
@@ -37,10 +39,24 @@ export function SignupPage() {
     e.preventDefault()
     if (isSubmitDisabled) return
 
-    // TODO: Replace with real API call once auth integration starts.
     setIsLoading(true)
+    setErrorMessage(null)
     try {
-      await sleep(1100)
+      if (import.meta.env.DEV) {
+        console.log('[ui][signup] submit', { userName: username, email })
+      }
+      await signup({ username, password, email })
+      const { token } = await login({ username, password })
+      if (import.meta.env.DEV) {
+        console.log('[ui][signup] login success', { tokenLength: token?.length ?? 0 })
+      }
+      setToken(token)
+      navigate('/chats', { replace: true })
+    } catch (err) {
+      if (import.meta.env.DEV) {
+        console.error('[ui][signup] error', err)
+      }
+      setErrorMessage(getApiErrorMessage(err))
     } finally {
       setIsLoading(false)
     }
@@ -164,6 +180,12 @@ export function SignupPage() {
             </p>
           ) : null}
         </div>
+
+        {errorMessage ? (
+          <p className={styles.error} role="alert">
+            {errorMessage}
+          </p>
+        ) : null}
 
         <button
           type="submit"

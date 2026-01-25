@@ -1,20 +1,22 @@
 import { useId, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { AuthLayout } from './AuthLayout'
 import styles from './LoginPage.module.css'
 
-function sleep(ms: number) {
-  return new Promise<void>((resolve) => setTimeout(resolve, ms))
-}
+import { login } from '../../api/auth'
+import { getApiErrorMessage } from '../../api/errors'
+import { setToken } from '../../api/token'
 
 export function LoginPage() {
   const usernameId = useId()
   const passwordId = useId()
+  const navigate = useNavigate()
 
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   const isSubmitDisabled = useMemo(() => {
     if (isLoading) return true
@@ -27,10 +29,23 @@ export function LoginPage() {
     e.preventDefault()
     if (isSubmitDisabled) return
 
-    // TODO: Replace with real API call once auth integration starts.
     setIsLoading(true)
+    setErrorMessage(null)
     try {
-      await sleep(900)
+      if (import.meta.env.DEV) {
+        console.log('[ui][login] submit', { userName: username })
+      }
+      const { token } = await login({ username, password })
+      if (import.meta.env.DEV) {
+        console.log('[ui][login] success', { tokenLength: token?.length ?? 0 })
+      }
+      setToken(token)
+      navigate('/chats', { replace: true })
+    } catch (err) {
+      if (import.meta.env.DEV) {
+        console.error('[ui][login] error', err)
+      }
+      setErrorMessage(getApiErrorMessage(err))
     } finally {
       setIsLoading(false)
     }
@@ -104,6 +119,12 @@ export function LoginPage() {
             </button>
           </div>
         </div>
+
+        {errorMessage ? (
+          <p className={styles.error} role="alert">
+            {errorMessage}
+          </p>
+        ) : null}
 
         <button
           type="submit"
