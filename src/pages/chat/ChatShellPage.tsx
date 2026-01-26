@@ -95,8 +95,6 @@ function Icon({
     <svg
       className={styles.icon}
       viewBox="0 0 24 24"
-      width="18"
-      height="18"
       aria-hidden="true"
       focusable="false"
     >
@@ -116,6 +114,19 @@ function Avatar({ name }: { name: string }) {
     <span className={styles.avatar} aria-hidden="true">
       <span className={styles.avatarInner}>{initials}</span>
     </span>
+  )
+}
+
+function UserIcon() {
+  return (
+    <div className={styles.userIcon} aria-hidden="true">
+      <Icon title="User">
+        <path
+          d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"
+          fill="currentColor"
+        />
+      </Icon>
+    </div>
   )
 }
 
@@ -656,67 +667,154 @@ export function ChatShellPage() {
               <div className={styles.conversation}>
                 <div className={styles.messages} aria-label="Messages">
                   {messagesLoadingFor === selectedId ? (
-                    <div className={styles.emptyCenter}>
-                      <div className={styles.illus} aria-hidden="true">
-                        <div className={styles.illusRing} />
-                        <div className={styles.illusCore}>
-                          <span className={styles.illusMark} />
+                    <div className={styles.noMessagesContainer}>
+                      <div className={styles.noMessagesContent}>
+                        <div className={styles.noMessagesIconWrapper}>
+                          <div className={styles.noMessagesIcon}>
+                            <Icon title="Loading">
+                              <path
+                                d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.31-8.86c-1.77-.45-2.34-.94-2.34-1.67 0-.84.79-1.43 2.1-1.43 1.38 0 1.9.66 1.9 1.57h1.6c0-.93-.56-2.01-2.1-2.01-1.65 0-2.2.81-2.2 1.43 0 1.25 1.15 1.76 2.55 2.19 1.8.55 2.34 1.18 2.34 1.95 0 .9-.79 1.52-2.1 1.52-1.5 0-2.05-.68-2.05-1.57H8.45c0 1.01.66 2.01 2.1 2.01 1.65 0 2.2-.81 2.2-1.43 0-1.25-1.15-1.76-2.55-2.19z"
+                                fill="currentColor"
+                              />
+                            </Icon>
+                          </div>
+                          <div className={styles.noMessagesIconGlow} />
                         </div>
+                        <h2 className={styles.noMessagesTitle}>Loading messages…</h2>
+                        <p className={styles.noMessagesSubtitle}>Fetching the latest messages for this room.</p>
                       </div>
-                      <h2 className={styles.emptyTitle}>Loading messages…</h2>
-                      <p className={styles.emptyCopy}>Fetching the latest messages for this room.</p>
                     </div>
                   ) : messages.length === 0 ? (
-                    <div className={styles.emptyCenter}>
-                      <div className={styles.illus} aria-hidden="true">
-                        <div className={styles.illusRing} />
-                        <div className={styles.illusCore}>
-                          <span className={styles.illusMark} />
+                    <div className={styles.noMessagesContainer}>
+                      <div className={styles.noMessagesContent}>
+                        <div className={styles.noMessagesIconWrapper}>
+                          <div className={styles.noMessagesIcon}>
+                            <Icon title="Message">
+                              <path
+                                d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"
+                                fill="currentColor"
+                              />
+                            </Icon>
+                          </div>
+                          <div className={styles.noMessagesIconGlow} />
+                        </div>
+                        <h2 className={styles.noMessagesTitle}>Start the conversation</h2>
+                        <p className={styles.noMessagesSubtitle}>
+                          Be the first to send a message in this room
+                        </p>
+
+                        <div className={styles.noMessagesTips}>
+                          <div className={styles.noMessagesTip}>
+                            <div className={styles.noMessagesTipIcon}>
+                              <Icon title="Type">
+                                <path
+                                  d="M9 4v1.38c-.83-.33-1.72-.5-2.61-.5-1.79 0-3.58.68-4.95 2.05l3.33 3.33h1.11v1.11c.86.86 1.98 1.31 3.11 1.36V15H6v3c0 1.1.9 2 2 2h10c1.66 0 3-1.34 3-3V4H9zm-1.11 6.41V8.26H5.61L4.57 7.22a5.07 5.07 0 0 1 1.82-.34c1.34 0 2.59.52 3.54 1.46l1.41 1.41-.2.2a2.7 2.7 0 0 1-1.92.8c-.47 0-.93-.12-1.33-.34zM19 17c0 .55-.45 1-1 1s-1-.45-1-1v-2h-4v-2h4V9h2v8z"
+                                  fill="currentColor"
+                                />
+                              </Icon>
+                            </div>
+                            <div className={styles.noMessagesTipText}>
+                              <div className={styles.noMessagesTipTitle}>Type a message</div>
+                              <div className={styles.noMessagesTipDesc}>Share your thoughts below</div>
+                            </div>
+                          </div>
+
+                          <div className={styles.noMessagesTip}>
+                            <div className={styles.noMessagesTipIcon}>
+                              <Icon title="Attach">
+                                <path
+                                  d="M10.6 18.2a4 4 0 0 1-5.66-5.66l7.07-7.07a3 3 0 0 1 4.24 4.24l-7.07 7.07a2 2 0 1 1-2.83-2.83l6.36-6.36a1 1 0 0 1 1.42 1.42l-6.36 6.36a0 0 0 0 0 0 0 .01.01 0 0 0 .01 0l7.07-7.07a1 1 0 0 0-1.42-1.42l-7.07 7.07a2 2 0 1 0 2.83 2.83l7.07-7.07a5 5 0 1 0-7.07-7.07L3.53 11.83a6 6 0 1 0 8.49 8.49 1 1 0 1 1-1.42-1.42Z"
+                                  fill="currentColor"
+                                />
+                              </Icon>
+                            </div>
+                            <div className={styles.noMessagesTipText}>
+                              <div className={styles.noMessagesTipTitle}>Attach a file</div>
+                              <div className={styles.noMessagesTipDesc}>Share documents or images</div>
+                            </div>
+                          </div>
+
+                          <div className={styles.noMessagesTip}>
+                            <div className={styles.noMessagesTipIcon}>
+                              <Icon title="Send">
+                                <path
+                                  d="M3 11.2 21 3l-8.2 18-1.9-7.2L3 11.2Zm9.1 1.5 1.1 4.3L17.6 7.4 12.1 12.7Z"
+                                  fill="currentColor"
+                                />
+                              </Icon>
+                            </div>
+                            <div className={styles.noMessagesTipText}>
+                              <div className={styles.noMessagesTipTitle}>Press Enter</div>
+                              <div className={styles.noMessagesTipDesc}>Quick send shortcut</div>
+                            </div>
+                          </div>
                         </div>
                       </div>
-                      <h2 className={styles.emptyTitle}>No messages yet</h2>
-                      <p className={styles.emptyCopy}>
-                        Send a message or attach a file to start the conversation.
-                      </p>
                     </div>
                   ) : (
                     <div className={styles.messageStack}>
                       {messages.map((m) => {
                         const isMe = m.from === 'me'
+                        const isSystem = m.from === 'system'
+                        const senderName = m.sender || 'Unknown'
+                        
+                        if (isSystem) {
+                          return (
+                            <div key={m.id} className={styles.systemMessage}>
+                              {m.text}
+                            </div>
+                          )
+                        }
+                        
                         return (
                           <div
                             key={m.id}
                             className={styles.messageRow}
                             data-me={isMe ? 'true' : 'false'}
                           >
-                            <div className={styles.bubble} data-me={isMe ? 'true' : 'false'}>
-                              {m.text ? <div className={styles.bubbleText}>{m.text}</div> : null}
-                              {m.attachment ? (
-                                <div className={styles.bubbleAttachment}>
-                                  {m.attachment.downloadUrl ? (
-                                    <a
-                                      className={styles.attachmentName}
-                                      href={m.attachment.downloadUrl}
-                                      target="_blank"
-                                      rel="noreferrer"
-                                    >
-                                      {m.attachment.name}
-                                    </a>
-                                  ) : (
-                                    <div className={styles.attachmentName}>{m.attachment.name}</div>
-                                  )}
-                                  <div className={styles.attachmentSize}>
-                                    {formatFileSize(m.attachment.size)}
-                                  </div>
+                            {!isMe && (
+                              <div className={styles.messageAvatar}>
+                                <UserIcon />
+                              </div>
+                            )}
+                            <div className={styles.messageContent}>
+                              <div className={styles.bubble} data-me={isMe ? 'true' : 'false'}>
+                                <div className={styles.bubbleHeader}>
+                                  <span className={styles.bubbleSender}>{senderName}</span>
                                 </div>
-                              ) : null}
-                              <div className={styles.bubbleMeta}>
-                                {new Date(m.createdAt).toLocaleTimeString([], {
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                                })}
+                                {m.text ? <div className={styles.bubbleText}>{m.text}</div> : null}
+                                {m.attachment ? (
+                                  <div className={styles.bubbleAttachment}>
+                                    {m.attachment.downloadUrl ? (
+                                      <a
+                                        className={styles.attachmentName}
+                                        href={m.attachment.downloadUrl}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                      >
+                                        {m.attachment.name}
+                                      </a>
+                                    ) : (
+                                      <div className={styles.attachmentName}>{m.attachment.name}</div>
+                                    )}
+                                    <div className={styles.attachmentSize}>
+                                      {formatFileSize(m.attachment.size)}
+                                    </div>
+                                  </div>
+                                ) : null}
+                                <div className={styles.bubbleMeta}>
+                                  {new Date(m.createdAt).toLocaleTimeString([], {
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                  })}
+                                </div>
                               </div>
                             </div>
+                            {isMe && (
+                              <div className={styles.messageAvatar}>
+                                <UserIcon />
+                              </div>
+                            )}
                           </div>
                         )
                       })}
