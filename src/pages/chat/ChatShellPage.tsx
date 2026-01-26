@@ -106,7 +106,7 @@ function Icon({
   )
 }
 
-function Avatar({ name, online }: { name: string; online?: boolean }) {
+function Avatar({ name }: { name: string }) {
   const initials = useMemo(() => {
     const parts = name.trim().split(/\s+/).slice(0, 2)
     return parts.map((p) => p[0]?.toUpperCase()).join('')
@@ -115,7 +115,6 @@ function Avatar({ name, online }: { name: string; online?: boolean }) {
   return (
     <span className={styles.avatar} aria-hidden="true">
       <span className={styles.avatarInner}>{initials}</span>
-      {online ? <span className={styles.onlineDot} /> : null}
     </span>
   )
 }
@@ -166,12 +165,18 @@ export function ChatShellPage() {
 
   const [rooms, setRooms] = useState<ChatPreview[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const allItems = useMemo(() => [...rooms, ...chats], [rooms, chats])
 
   const selected = useMemo(
     () => allItems.find((c) => c.id === selectedId) ?? null,
     [allItems, selectedId],
   )
+
+  const selectedRoomId = useMemo(() => {
+    if (!selected) return null
+    return chatIdToRoomId(selected.id)
+  }, [selected?.id])
 
   const roomIdInputId = useId()
   const roomIdInputRef = useRef<HTMLInputElement | null>(null)
@@ -494,10 +499,29 @@ export function ChatShellPage() {
   return (
     <div className={styles.page}>
       <div className={styles.shell}>
-        <aside className={styles.sidebar} aria-label="Chats sidebar">
+        <div
+          className={styles.sidebarOverlay}
+          data-open={isSidebarOpen ? 'true' : 'false'}
+          aria-hidden={isSidebarOpen ? 'false' : 'true'}
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) setIsSidebarOpen(false)
+          }}
+        />
+
+        <aside
+          className={styles.sidebar}
+          data-open={isSidebarOpen ? 'true' : 'false'}
+          aria-label="Chats sidebar"
+        >
           <div className={styles.sidebarTop}>
             <button className={styles.profileButton} type="button" title="Profile">
-              <span className={styles.profileMark} aria-hidden="true" />
+              <span className={styles.profileMark} aria-hidden="true">
+                {(() => {
+                  const name = getUserName() ?? 'U'
+                  const parts = name.trim().split(/\s+/).slice(0, 2)
+                  return parts.map((p) => p[0]?.toUpperCase()).join('') || 'U'
+                })()}
+              </span>
             </button>
 
             <div className={styles.brandBlock}>
@@ -528,7 +552,7 @@ export function ChatShellPage() {
           <div className={styles.searchWrap}>
             <Icon title="Search">
               <path
-                d="M10.5 3a7.5 7.5 0 1 1 4.7 13.35l3.22 3.22a1 1 0 0 1-1.42 1.42l-3.22-3.22A7.5 7.5 0 0 1 10.5 3Zm0 2a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11Z"
+                d="M10 3a7 7 0 1 0 0 14 7 7 0 0 0 0-14Zm0 2a5 5 0 1 1 0 10 5 5 0 0 1 0-10Zm8.707 11.293a1 1 0 0 0-1.414 1.414l2 2a1 1 0 0 0 1.414-1.414l-2-2Z"
                 fill="currentColor"
               />
             </Icon>
@@ -549,10 +573,13 @@ export function ChatShellPage() {
                   type="button"
                   className={styles.chatItem}
                   data-selected={selected ? 'true' : 'false'}
-                  onClick={() => setSelectedId(c.id)}
+                  onClick={() => {
+                    setSelectedId(c.id)
+                    setIsSidebarOpen(false)
+                  }}
                   role="listitem"
                 >
-                  <Avatar name={c.name} online={c.isOnline} />
+                  <Avatar name={c.name} />
                   <div className={styles.chatMeta}>
                     <div className={styles.chatRow}>
                       <div className={styles.chatName}>{c.name}</div>
@@ -580,11 +607,29 @@ export function ChatShellPage() {
             <div className={styles.placeholder}>
               <div className={styles.placeholderTop}>
                 <div className={styles.placeholderLeft}>
-                  <Avatar name={selected.name} online={selected.isOnline} />
+                  <button
+                    className={`${styles.iconButton} ${styles.mobileMenuButton}`}
+                    type="button"
+                    title="Chats"
+                    aria-label="Open chats"
+                    onClick={() => setIsSidebarOpen(true)}
+                  >
+                    <Icon title="Chats">
+                      <path
+                        d="M4 7h16a1 1 0 1 0 0-2H4a1 1 0 0 0 0 2Zm16 4H4a1 1 0 1 0 0 2h16a1 1 0 1 0 0-2Zm0 6H4a1 1 0 1 0 0 2h16a1 1 0 1 0 0-2Z"
+                        fill="currentColor"
+                      />
+                    </Icon>
+                  </button>
+                  <Avatar name={selected.name} />
                   <div className={styles.placeholderTitle}>
                     <div className={styles.placeholderName}>{selected.name}</div>
                     <div className={styles.placeholderSub}>
-                      Messages UI will appear here next.
+                      {selectedRoomId
+                        ? `Room ID · ${selectedRoomId}`
+                        : selected.isOnline
+                          ? 'Online'
+                          : 'Ready to chat'}
                     </div>
                   </div>
                 </div>
@@ -771,33 +816,141 @@ export function ChatShellPage() {
             </div>
           ) : (
             <div className={styles.empty}>
-              <div className={styles.emptyCenter}>
-                <div className={styles.illus} aria-hidden="true">
-                  <div className={styles.illusRing} />
-                  <div className={styles.illusCore}>
-                    <span className={styles.illusMark} />
+              <button
+                className={`${styles.iconButton} ${styles.mobileEmptyMenu}`}
+                type="button"
+                title="Chats"
+                aria-label="Open chats"
+                onClick={() => setIsSidebarOpen(true)}
+              >
+                <Icon title="Chats">
+                  <path
+                    d="M4 7h16a1 1 0 1 0 0-2H4a1 1 0 0 0 0 2Zm16 4H4a1 1 0 1 0 0 2h16a1 1 0 1 0 0-2Zm0 6H4a1 1 0 1 0 0 2h16a1 1 0 1 0 0-2Z"
+                    fill="currentColor"
+                  />
+                </Icon>
+              </button>
+              <div className={styles.emptyContainer}>
+                <div className={styles.emptyHeader}>
+                  <div className={styles.emptyIconWrapper}>
+                    <div className={styles.emptyIcon}>
+                      <Icon title="Chat">
+                        <path
+                          d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"
+                          fill="currentColor"
+                        />
+                      </Icon>
+                    </div>
                   </div>
+                  <h1 className={styles.emptyTitle}>Welcome to NexChat</h1>
+                  <p className={styles.emptySubtitle}>
+                    Start a conversation or join an existing room to begin chatting
+                  </p>
                 </div>
-                <h2 className={styles.emptyTitle}>Welcome to NexChat</h2>
-                <p className={styles.emptyCopy}>
-                  Select a chat on the left to view messages. Your real-time
-                  conversations will appear here.
-                </p>
-                <div className={styles.emptyCtas}>
+
+                <div className={styles.emptyCards}>
                   <button
-                    className={styles.primary}
+                    className={styles.emptyCard}
                     type="button"
                     onClick={() => openRoomDialog('create')}
                   >
-                    Create a room
+                    <div className={styles.emptyCardIcon}>
+                      <Icon title="Create room">
+                        <path
+                          d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 11h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"
+                          fill="currentColor"
+                        />
+                      </Icon>
+                    </div>
+                    <div className={styles.emptyCardContent}>
+                      <h3 className={styles.emptyCardTitle}>Create a Room</h3>
+                      <p className={styles.emptyCardDescription}>
+                        Start a new room and invite others to join your conversation
+                      </p>
+                    </div>
+                    <div className={styles.emptyCardArrow}>
+                      <Icon title="Arrow">
+                        <path
+                          d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"
+                          fill="currentColor"
+                        />
+                      </Icon>
+                    </div>
                   </button>
+
                   <button
-                    className={styles.secondary}
+                    className={styles.emptyCard}
                     type="button"
                     onClick={() => openRoomDialog('join')}
                   >
-                    Join a room
+                    <div className={styles.emptyCardIcon}>
+                      <Icon title="Join room">
+                        <path
+                          d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"
+                          fill="currentColor"
+                        />
+                      </Icon>
+                    </div>
+                    <div className={styles.emptyCardContent}>
+                      <h3 className={styles.emptyCardTitle}>Join a Room</h3>
+                      <p className={styles.emptyCardDescription}>
+                        Enter a room ID to join an existing conversation
+                      </p>
+                    </div>
+                    <div className={styles.emptyCardArrow}>
+                      <Icon title="Arrow">
+                        <path
+                          d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"
+                          fill="currentColor"
+                        />
+                      </Icon>
+                    </div>
                   </button>
+                </div>
+
+                <div className={styles.emptyFeatures}>
+                  <div className={styles.emptyFeature}>
+                    <div className={styles.emptyFeatureIcon}>
+                      <Icon title="Real-time">
+                        <path
+                          d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"
+                          fill="currentColor"
+                        />
+                      </Icon>
+                    </div>
+                    <div className={styles.emptyFeatureText}>
+                      <div className={styles.emptyFeatureTitle}>Real-time messaging</div>
+                      <div className={styles.emptyFeatureDesc}>Instant delivery</div>
+                    </div>
+                  </div>
+                  <div className={styles.emptyFeature}>
+                    <div className={styles.emptyFeatureIcon}>
+                      <Icon title="Secure">
+                        <path
+                          d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"
+                          fill="currentColor"
+                        />
+                      </Icon>
+                    </div>
+                    <div className={styles.emptyFeatureText}>
+                      <div className={styles.emptyFeatureTitle}>Secure & private</div>
+                      <div className={styles.emptyFeatureDesc}>End-to-end encrypted</div>
+                    </div>
+                  </div>
+                  <div className={styles.emptyFeature}>
+                    <div className={styles.emptyFeatureIcon}>
+                      <Icon title="Fast">
+                        <path
+                          d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"
+                          fill="currentColor"
+                        />
+                      </Icon>
+                    </div>
+                    <div className={styles.emptyFeatureText}>
+                      <div className={styles.emptyFeatureTitle}>Lightning fast</div>
+                      <div className={styles.emptyFeatureDesc}>Optimized performance</div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

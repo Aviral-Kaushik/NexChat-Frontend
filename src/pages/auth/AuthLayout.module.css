@@ -5,10 +5,10 @@
   place-items: center;
   overflow: hidden;
   padding: 28px 18px;
-  background: radial-gradient(1200px 800px at 15% 20%, rgba(120, 119, 198, 0.22), transparent 55%),
-    radial-gradient(900px 700px at 85% 20%, rgba(45, 212, 191, 0.14), transparent 55%),
-    radial-gradient(1100px 900px at 50% 95%, rgba(59, 130, 246, 0.16), transparent 50%),
-    linear-gradient(180deg, #070a12 0%, #0b1020 60%, #070a12 100%);
+  background: radial-gradient(1200px 800px at 15% 20%, rgba(37, 99, 235, 0.14), transparent 58%),
+    radial-gradient(900px 700px at 85% 20%, rgba(16, 185, 129, 0.10), transparent 58%),
+    radial-gradient(1100px 900px at 50% 95%, rgba(37, 99, 235, 0.10), transparent 52%),
+    linear-gradient(180deg, var(--bg) 0%, var(--bg2) 100%);
 }
 
 .bg {
@@ -32,13 +32,13 @@
 .blobA {
   left: -120px;
   top: -160px;
-  background: radial-gradient(circle at 30% 30%, rgba(99, 102, 241, 0.85), rgba(99, 102, 241, 0.05) 62%);
+  background: radial-gradient(circle at 30% 30%, rgba(37, 99, 235, 0.55), rgba(37, 99, 235, 0.04) 62%);
 }
 
 .blobB {
   right: -140px;
   top: -120px;
-  background: radial-gradient(circle at 30% 30%, rgba(45, 212, 191, 0.75), rgba(45, 212, 191, 0.05) 60%);
+  background: radial-gradient(circle at 30% 30%, rgba(16, 185, 129, 0.45), rgba(16, 185, 129, 0.04) 60%);
 }
 
 .blobC {
@@ -46,7 +46,7 @@
   bottom: -220px;
   width: 620px;
   height: 620px;
-  background: radial-gradient(circle at 30% 30%, rgba(59, 130, 246, 0.7), rgba(59, 130, 246, 0.04) 62%);
+  background: radial-gradient(circle at 30% 30%, rgba(37, 99, 235, 0.42), rgba(37, 99, 235, 0.03) 62%);
 }
 
 .container {
@@ -63,7 +63,7 @@
   flex-direction: column;
   justify-content: center;
   padding: 16px 10px;
-  color: rgba(255, 255, 255, 0.92);
+  color: var(--text);
 }
 
 .brandRow {
@@ -72,8 +72,8 @@
   gap: 10px;
   padding: 10px 12px;
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.76);
+  border: 1px solid var(--border);
   backdrop-filter: blur(10px);
 }
 
@@ -100,7 +100,7 @@
 .heroCopy {
   margin: 0;
   max-width: 44ch;
-  color: rgba(255, 255, 255, 0.76);
+  color: var(--muted);
   font-size: 14.5px;
   line-height: 1.65;
 }
@@ -116,9 +116,9 @@
   font-size: 12px;
   padding: 8px 10px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  color: rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid var(--border);
+  color: var(--muted);
 }
 
 .right {
@@ -129,9 +129,9 @@
 .card {
   width: 100%;
   border-radius: 18px;
-  background: rgba(12, 18, 34, 0.62);
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.55);
+  background: rgba(255, 255, 255, 0.86);
+  border: 1px solid var(--border);
+  box-shadow: 0 24px 80px rgba(15, 23, 42, 0.14);
   backdrop-filter: blur(14px);
 }
 
@@ -141,14 +141,14 @@
 
 .headline {
   margin: 0;
-  color: rgba(255, 255, 255, 0.93);
+  color: var(--text);
   font-size: 20px;
   letter-spacing: -0.01em;
 }
 
 .subhead {
   margin: 8px 0 0;
-  color: rgba(255, 255, 255, 0.68);
+  color: var(--muted);
   font-size: 13px;
   line-height: 1.5;
 }
