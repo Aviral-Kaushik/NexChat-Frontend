@@ -364,7 +364,12 @@ export function ChatShellPage() {
   }, [roomAction])
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ block: 'end' })
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ 
+        behavior: 'smooth',
+        block: 'end' 
+      })
+    }
   }, [messages.length, selectedId])
 
   function openRoomDialog(action: RoomAction) {
