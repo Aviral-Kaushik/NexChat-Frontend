@@ -3,7 +3,7 @@ import styles from './ChatShellPage.module.css'
 
 import { connectRoomSocket, type RoomSocket } from '../../api/chatSocket'
 import { getApiErrorMessage } from '../../api/errors'
-import { getRoomMessages, type Message as BackendMessage } from '../../api/messages'
+import { getRoomMessages, type Message as BackendMessage, uploadFile } from '../../api/messages'
 import { createRoom, joinRoom } from '../../api/rooms'
 import { getUserName } from '../../api/token'
 
@@ -31,6 +31,7 @@ type ChatMessage = {
     mimeType?: string
   }
   createdAt: number
+  isUploading?: boolean
 }
 
 function chatIdToRoomId(chatId: string): string | null {
@@ -77,6 +78,16 @@ function resolveFrom(sender: string | null | undefined): ChatMessage['from'] {
 function isImageMimeType(mimeType: string | undefined): boolean {
   if (!mimeType) return false
   return mimeType.startsWith('image/')
+}
+
+function getImageUrl(downloadUrl: string | undefined): string | undefined {
+  if (!downloadUrl) return undefined
+  // If downloadUrl already starts with http, return as-is
+  if (downloadUrl.startsWith('http://') || downloadUrl.startsWith('https://')) {
+    return downloadUrl
+  }
+  // Otherwise, prepend the base URL
+  return `http://localhost:8080/${downloadUrl}`
 }
 
 function mapBackendMessages(chatId: string, roomId: string, list: BackendMessage[]): ChatMessage[] {
@@ -230,8 +241,14 @@ export function ChatShellPage() {
   )
   const [draft, setDraft] = useState('')
   const [attachedFile, setAttachedFile] = useState<File | null>(null)
+  const [fileError, setFileError] = useState<string | null>(null)
   const [messagesLoadingFor, setMessagesLoadingFor] = useState<string | null>(null)
   const roomSocketRef = useRef<RoomSocket | null>(null)
+  const fileErrorTimeoutRef = useRef<number | null>(null)
+  const fileErrorMessageIdsRef = useRef<Set<string>>(new Set())
+
+  const MIN_FILE_SIZE = 1024 // 1 KB
+  const MAX_FILE_SIZE = 25 * 1024 * 1024 // 25 MB
 
   const messages = useMemo(() => {
     if (!selectedId) return []
@@ -372,6 +389,50 @@ export function ChatShellPage() {
     }
   }, [messages.length, selectedId])
 
+  // Auto-hide file error in composer after 5 seconds
+  useEffect(() => {
+    if (fileError) {
+      // Clear any existing timeout
+      if (fileErrorTimeoutRef.current) {
+        window.clearTimeout(fileErrorTimeoutRef.current)
+      }
+      
+      // Set new timeout to hide error after 5 seconds
+      fileErrorTimeoutRef.current = window.setTimeout(() => {
+        setFileError(null)
+        fileErrorTimeoutRef.current = null
+      }, 5000)
+      
+      return () => {
+        if (fileErrorTimeoutRef.current) {
+          window.clearTimeout(fileErrorTimeoutRef.current)
+          fileErrorTimeoutRef.current = null
+        }
+      }
+    }
+  }, [fileError])
+
+  // Auto-hide file error system messages after 8 seconds
+  useEffect(() => {
+    if (fileErrorMessageIdsRef.current.size > 0 && selectedId) {
+      const timeoutId = window.setTimeout(() => {
+        setMessagesByChat((prev) => {
+          const existing = prev[selectedId] ?? []
+          const filtered = existing.filter((m) => !fileErrorMessageIdsRef.current.has(m.id))
+          if (filtered.length !== existing.length) {
+            fileErrorMessageIdsRef.current.clear()
+            return { ...prev, [selectedId]: filtered }
+          }
+          return prev
+        })
+      }, 8000)
+      
+      return () => {
+        window.clearTimeout(timeoutId)
+      }
+    }
+  }, [selectedId, messagesByChat])
+
   function openRoomDialog(action: RoomAction) {
     setRoomAction(action)
     setRoomId('')
@@ -467,85 +528,182 @@ export function ChatShellPage() {
     return `${mb.toFixed(1)} MB`
   }
 
-  function sendMessage() {
+  async function sendMessage() {
     if (!selectedId) return
     const text = draft.trim()
     if (text.length === 0 && !attachedFile) return
 
     const roomId = chatIdToRoomId(selectedId)
-    if (roomId) {
-      if (attachedFile) {
-        const sys: ChatMessage = {
-          id: `sys:${Date.now()}`,
-          chatId: selectedId,
-          from: 'system',
-          text: 'File sending is not wired yet. Please send a text message for now.',
-          createdAt: Date.now(),
-        }
-        setMessagesByChat((prev) => ({
-          ...prev,
-          [selectedId]: [...(prev[selectedId] ?? []), sys],
-        }))
-        return
-      }
+    if (!roomId) return
 
-      const socket = roomSocketRef.current
-      if (!socket || socket.roomId !== roomId || !socket.connected()) {
-        const sys: ChatMessage = {
-          id: `sys:${Date.now()}`,
-          chatId: selectedId,
-          from: 'system',
-          text: 'Not connected to the room yet. Please wait a moment and try again.',
-          createdAt: Date.now(),
-        }
-        setMessagesByChat((prev) => ({
-          ...prev,
-          [selectedId]: [...(prev[selectedId] ?? []), sys],
-        }))
-        return
+    const socket = roomSocketRef.current
+    if (!socket || socket.roomId !== roomId || !socket.connected()) {
+      const sys: ChatMessage = {
+        id: `sys:${Date.now()}`,
+        chatId: selectedId,
+        from: 'system',
+        text: 'Not connected to the room yet. Please wait a moment and try again.',
+        createdAt: Date.now(),
       }
-
-      const sender = getUserName() ?? 'anonymous'
-      const payload = {
-        roomId,
-        sender,
-        content: text,
-        type: 'TEXT',
-        timestamp: new Date().toISOString(),
-      }
-
-      socket.sendJson(`/app/sendMessage/${roomId}`, payload)
-      setDraft('')
+      setMessagesByChat((prev) => ({
+        ...prev,
+        [selectedId]: [...(prev[selectedId] ?? []), sys],
+      }))
       return
     }
 
-    const attachment = attachedFile
-      ? {
+    // Handle file upload
+    if (attachedFile) {
+      // Validate file size again
+      if (attachedFile.size < MIN_FILE_SIZE || attachedFile.size > MAX_FILE_SIZE) {
+        const errorMsg: ChatMessage = {
+          id: `sys:${Date.now()}`,
+          chatId: selectedId,
+          from: 'system',
+          text: `File size must be between ${formatFileSize(MIN_FILE_SIZE)} and ${formatFileSize(MAX_FILE_SIZE)}.`,
+          createdAt: Date.now(),
+        }
+        setMessagesByChat((prev) => ({
+          ...prev,
+          [selectedId]: [...(prev[selectedId] ?? []), errorMsg],
+        }))
+        return
+      }
+
+      // Create temporary message with uploading state
+      const tempMessageId = `temp:${Date.now()}:${Math.random().toString(16).slice(2)}`
+      const tempMsg: ChatMessage = {
+        id: tempMessageId,
+        chatId: selectedId,
+        from: 'me',
+        text: text.length > 0 ? text : undefined,
+        attachment: {
           name: attachedFile.name,
           size: attachedFile.size,
           mimeType: attachedFile.type,
-          downloadUrl: isImageMimeType(attachedFile.type)
-            ? URL.createObjectURL(attachedFile)
-            : undefined,
-        }
-      : undefined
+        },
+        createdAt: Date.now(),
+        isUploading: true,
+      }
 
-    const msg: ChatMessage = {
-      id: `m:${Date.now()}:${Math.random().toString(16).slice(2)}`,
-      chatId: selectedId,
-      from: 'me',
-      text: text.length ? text : undefined,
-      attachment,
-      createdAt: Date.now(),
+      // Add uploading message to chat
+      setMessagesByChat((prev) => ({
+        ...prev,
+        [selectedId]: [...(prev[selectedId] ?? []), tempMsg],
+      }))
+
+      try {
+        // Upload file to backend
+        const uploadResponse = await uploadFile(roomId, attachedFile)
+
+        // Remove temporary uploading message
+        setMessagesByChat((prev) => {
+          const existing = prev[selectedId] ?? []
+          return {
+            ...prev,
+            [selectedId]: existing.filter((m) => m.id !== tempMessageId),
+          }
+        })
+
+        // Send message via websocket with FILE type
+        const sender = getUserName() ?? 'anonymous'
+        const payload = {
+          roomId,
+          sender,
+          content: text.length > 0 ? text : '',
+          type: 'FILE',
+          file: {
+            originalName: attachedFile.name,
+            storedName: uploadResponse.fileName,
+            downloadUrl: uploadResponse.downloadUrl,
+            mimeType: uploadResponse.mimeType,
+            size: uploadResponse.size,
+          },
+          timestamp: new Date().toISOString(),
+        }
+
+        socket.sendJson(`/app/sendMessage/${roomId}`, payload)
+        setDraft('')
+        setAttachedFile(null)
+        if (fileInputRef.current) fileInputRef.current.value = ''
+        
+        // Clear any file errors on successful upload
+        if (fileError) {
+          setFileError(null)
+          if (fileErrorTimeoutRef.current) {
+            window.clearTimeout(fileErrorTimeoutRef.current)
+            fileErrorTimeoutRef.current = null
+          }
+        }
+      } catch (err) {
+        // Remove temporary uploading message
+        setMessagesByChat((prev) => {
+          const existing = prev[selectedId] ?? []
+          return {
+            ...prev,
+            [selectedId]: existing.filter((m) => m.id !== tempMessageId),
+          }
+        })
+
+        // Show error message (will auto-hide after 8 seconds)
+        const errorMsgId = `sys:file-error:${Date.now()}`
+        const errorMsg: ChatMessage = {
+          id: errorMsgId,
+          chatId: selectedId,
+          from: 'system',
+          text: `Failed to upload file: ${getApiErrorMessage(err)}`,
+          createdAt: Date.now(),
+        }
+        fileErrorMessageIdsRef.current.add(errorMsgId)
+        setMessagesByChat((prev) => ({
+          ...prev,
+          [selectedId]: [...(prev[selectedId] ?? []), errorMsg],
+        }))
+        
+        // Auto-hide after 8 seconds
+        window.setTimeout(() => {
+          setMessagesByChat((prev) => {
+            const existing = prev[selectedId] ?? []
+            const filtered = existing.filter((m) => m.id !== errorMsgId)
+            fileErrorMessageIdsRef.current.delete(errorMsgId)
+            return { ...prev, [selectedId]: filtered }
+          })
+        }, 8000)
+      }
+      return
     }
 
-    setMessagesByChat((prev) => ({
-      ...prev,
-      [selectedId]: [...(prev[selectedId] ?? []), msg],
-    }))
+    // Handle text-only message
+    const sender = getUserName() ?? 'anonymous'
+    const payload = {
+      roomId,
+      sender,
+      content: text,
+      type: 'TEXT',
+      timestamp: new Date().toISOString(),
+    }
+
+    socket.sendJson(`/app/sendMessage/${roomId}`, payload)
     setDraft('')
-    setAttachedFile(null)
-    if (fileInputRef.current) fileInputRef.current.value = ''
+    
+    // Clear file error when sending message
+    if (fileError) {
+      setFileError(null)
+      if (fileErrorTimeoutRef.current) {
+        window.clearTimeout(fileErrorTimeoutRef.current)
+        fileErrorTimeoutRef.current = null
+      }
+    }
+    
+    // Clear file error system messages when sending message
+    if (selectedId && fileErrorMessageIdsRef.current.size > 0) {
+      setMessagesByChat((prev) => {
+        const existing = prev[selectedId] ?? []
+        const filtered = existing.filter((m) => !fileErrorMessageIdsRef.current.has(m.id))
+        fileErrorMessageIdsRef.current.clear()
+        return { ...prev, [selectedId]: filtered }
+      })
+    }
   }
 
   return (
@@ -823,66 +981,103 @@ export function ChatShellPage() {
                                 <div className={styles.bubbleHeader}>
                                   <span className={styles.bubbleSender}>{senderName}</span>
                                 </div>
-                                {m.attachment && isImageMimeType(m.attachment.mimeType) ? (
-                                  <div className={styles.imageMessage}>
-                                    {m.attachment.downloadUrl ? (
-                                      <a
-                                        href={m.attachment.downloadUrl}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className={styles.imageMessageLink}
-                                      >
-                                        <img
-                                          src={m.attachment.downloadUrl}
-                                          alt={m.attachment.name}
-                                          className={styles.imageMessageImg}
-                                          loading="lazy"
+                                {m.isUploading ? (
+                                  <div className={styles.uploadingIndicator}>
+                                    <div className={styles.uploadingSpinner}>
+                                      <Icon title="Uploading">
+                                        <path
+                                          d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"
+                                          stroke="currentColor"
+                                          strokeWidth="2"
+                                          strokeLinecap="round"
+                                          fill="none"
                                         />
-                                      </a>
-                                    ) : (
-                                      <div className={styles.imageMessagePlaceholder}>
-                                        <Icon title="Image">
-                                          <path
-                                            d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"
-                                            fill="currentColor"
-                                          />
-                                        </Icon>
-                                        <span>Image unavailable</span>
-                                      </div>
-                                    )}
-                                    {m.text && m.text.trim() ? (
-                                      <div className={styles.imageMessageCaption}>{m.text}</div>
-                                    ) : null}
+                                      </Icon>
+                                    </div>
+                                    <span className={styles.uploadingText}>Uploading...</span>
                                   </div>
                                 ) : (
                                   <>
-                                    {m.text ? <div className={styles.bubbleText}>{m.text}</div> : null}
-                                    {m.attachment ? (
-                                      <div className={styles.bubbleAttachment}>
-                                        {m.attachment.downloadUrl ? (
-                                          <a
-                                            className={styles.attachmentName}
-                                            href={m.attachment.downloadUrl}
-                                            target="_blank"
-                                            rel="noreferrer"
-                                          >
-                                            {m.attachment.name}
-                                          </a>
-                                        ) : (
-                                          <div className={styles.attachmentName}>{m.attachment.name}</div>
-                                        )}
-                                        <div className={styles.attachmentSize}>
-                                          {formatFileSize(m.attachment.size)}
-                                        </div>
+                                    {m.attachment && isImageMimeType(m.attachment.mimeType) ? (
+                                      <div className={styles.imageMessage}>
+                                        {(() => {
+                                          const imageUrl = getImageUrl(m.attachment.downloadUrl)
+                                          return imageUrl ? (
+                                            <a
+                                              href={imageUrl}
+                                              target="_blank"
+                                              rel="noreferrer"
+                                              className={styles.imageMessageLink}
+                                            >
+                                              <img
+                                                src={imageUrl}
+                                                alt={m.attachment.name}
+                                                className={styles.imageMessageImg}
+                                                loading="lazy"
+                                              />
+                                            </a>
+                                          ) : (
+                                            <div className={styles.imageMessagePlaceholder}>
+                                              <Icon title="Image">
+                                                <path
+                                                  d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"
+                                                  fill="currentColor"
+                                                />
+                                              </Icon>
+                                              <span>Image unavailable</span>
+                                            </div>
+                                          )
+                                        })()}
+                                        {m.text && m.text.trim() ? (
+                                          <div className={styles.imageMessageCaption}>{m.text}</div>
+                                        ) : null}
                                       </div>
-                                    ) : null}
+                                    ) : (
+                                      <>
+                                        {m.text ? <div className={styles.bubbleText}>{m.text}</div> : null}
+                                        {m.attachment ? (
+                                          <div className={styles.bubbleAttachment}>
+                                            {(() => {
+                                              const downloadUrl = getImageUrl(m.attachment.downloadUrl)
+                                              return downloadUrl ? (
+                                                <a
+                                                  className={styles.attachmentName}
+                                                  href={downloadUrl}
+                                                  target="_blank"
+                                                  rel="noreferrer"
+                                                >
+                                                  {m.attachment.name}
+                                                </a>
+                                              ) : (
+                                                <div className={styles.attachmentName}>{m.attachment.name}</div>
+                                              )
+                                            })()}
+                                            <div className={styles.attachmentSize}>
+                                              {formatFileSize(m.attachment.size)}
+                                            </div>
+                                          </div>
+                                        ) : null}
+                                      </>
+                                    )}
                                   </>
                                 )}
+                                {m.attachment && m.isUploading && (
+                                  <div className={styles.uploadingFileInfo}>
+                                    <div className={styles.uploadingFileName}>{m.attachment.name}</div>
+                                    <div className={styles.uploadingFileSize}>
+                                      {formatFileSize(m.attachment.size)}
+                                    </div>
+                                  </div>
+                                )}
                                 <div className={styles.bubbleMeta}>
-                                  {new Date(m.createdAt).toLocaleTimeString([], {
-                                    hour: '2-digit',
-                                    minute: '2-digit',
-                                  })}
+                                  {m.isUploading ? (
+                                    <span className={styles.uploadingMeta}>Uploading...</span>
+                                  ) : (
+                                    new Date(m.createdAt).toLocaleTimeString([], {
+                                      hour: '2-digit',
+                                      minute: '2-digit',
+                                    })
+                                  )}
                                 </div>
                               </div>
                             </div>
@@ -912,10 +1107,52 @@ export function ChatShellPage() {
                     type="file"
                     onChange={(e) => {
                       const f = e.target.files?.[0] ?? null
+                      // Clear file error when attaching new file
+                      setFileError(null)
+                      if (fileErrorTimeoutRef.current) {
+                        window.clearTimeout(fileErrorTimeoutRef.current)
+                        fileErrorTimeoutRef.current = null
+                      }
+                      
+                      // Clear file error system messages when attaching new file
+                      if (selectedId && fileErrorMessageIdsRef.current.size > 0) {
+                        setMessagesByChat((prev) => {
+                          const existing = prev[selectedId] ?? []
+                          const filtered = existing.filter((m) => !fileErrorMessageIdsRef.current.has(m.id))
+                          fileErrorMessageIdsRef.current.clear()
+                          return { ...prev, [selectedId]: filtered }
+                        })
+                      }
+                      
+                      if (!f) {
+                        setAttachedFile(null)
+                        return
+                      }
+                      
+                      // Validate file size
+                      if (f.size < MIN_FILE_SIZE) {
+                        setFileError(`File size must be at least ${formatFileSize(MIN_FILE_SIZE)}.`)
+                        setAttachedFile(null)
+                        if (fileInputRef.current) fileInputRef.current.value = ''
+                        return
+                      }
+                      
+                      if (f.size > MAX_FILE_SIZE) {
+                        setFileError(`File size must not exceed ${formatFileSize(MAX_FILE_SIZE)}.`)
+                        setAttachedFile(null)
+                        if (fileInputRef.current) fileInputRef.current.value = ''
+                        return
+                      }
+                      
                       setAttachedFile(f)
                     }}
                   />
 
+                  {fileError ? (
+                    <div className={styles.fileError} role="alert">
+                      {fileError}
+                    </div>
+                  ) : null}
                   {attachedFile ? (
                     <div className={styles.attachmentChipRow}>
                       <div className={styles.attachmentChip}>
@@ -930,6 +1167,7 @@ export function ChatShellPage() {
                           className={styles.chipRemove}
                           onClick={() => {
                             setAttachedFile(null)
+                            setFileError(null)
                             if (fileInputRef.current) fileInputRef.current.value = ''
                           }}
                           aria-label="Remove attachment"
@@ -965,7 +1203,17 @@ export function ChatShellPage() {
                       className={styles.textarea}
                       placeholder="Type a message…"
                       value={draft}
-                      onChange={(e) => setDraft(e.target.value)}
+                      onChange={(e) => {
+                        setDraft(e.target.value)
+                        // Clear file error when user types
+                        if (fileError) {
+                          setFileError(null)
+                          if (fileErrorTimeoutRef.current) {
+                            window.clearTimeout(fileErrorTimeoutRef.current)
+                            fileErrorTimeoutRef.current = null
+                          }
+                        }
+                      }}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' && !e.shiftKey) {
                           e.preventDefault()

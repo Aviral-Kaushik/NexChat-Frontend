@@ -699,6 +699,102 @@
   color: rgba(255, 255, 255, 0.85);
 }
 
+.uploadingIndicator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 20px;
+  min-height: 80px;
+}
+
+.uploadingSpinner {
+  width: 32px;
+  height: 32px;
+  position: relative;
+  color: var(--muted);
+}
+
+.bubble[data-me='true'] .uploadingSpinner {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.uploadingSpinner .icon {
+  width: 32px;
+  height: 32px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.uploadingText {
+  font-size: 13px;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.bubble[data-me='true'] .uploadingText {
+  color: rgba(255, 255, 255, 0.90);
+}
+
+.uploadingFileInfo {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.bubble[data-me='true'] .uploadingFileInfo {
+  border-top-color: rgba(255, 255, 255, 0.15);
+}
+
+.uploadingFileName {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bubble[data-me='true'] .uploadingFileName {
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.uploadingFileSize {
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.bubble[data-me='true'] .uploadingFileSize {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.uploadingMeta {
+  font-size: 11px;
+  font-style: italic;
+  opacity: 0.85;
+}
+
+.fileError {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  font-size: 12px;
+  color: rgba(239, 68, 68, 0.95);
+  font-weight: 500;
+}
+
 .composer {
   border-top: 1px solid var(--border);
   background: rgba(255, 255, 255, 0.72);
