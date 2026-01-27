@@ -52,6 +52,11 @@ function resolveFrom(sender: string | null | undefined): ChatMessage['from'] {
   return 'other'
 }
 
+function isImageMimeType(mimeType: string | undefined): boolean {
+  if (!mimeType) return false
+  return mimeType.startsWith('image/')
+}
+
 function mapBackendMessages(chatId: string, roomId: string, list: BackendMessage[]): ChatMessage[] {
   const mapped = list.map((m): ChatMessage => {
     const createdAt = parseLocalDateTime(m.timestamp)
@@ -487,14 +492,23 @@ export function ChatShellPage() {
       return
     }
 
+    const attachment = attachedFile
+      ? {
+          name: attachedFile.name,
+          size: attachedFile.size,
+          mimeType: attachedFile.type,
+          downloadUrl: isImageMimeType(attachedFile.type)
+            ? URL.createObjectURL(attachedFile)
+            : undefined,
+        }
+      : undefined
+
     const msg: ChatMessage = {
       id: `m:${Date.now()}:${Math.random().toString(16).slice(2)}`,
       chatId: selectedId,
       from: 'me',
       text: text.length ? text : undefined,
-      attachment: attachedFile
-        ? { name: attachedFile.name, size: attachedFile.size }
-        : undefined,
+      attachment,
       createdAt: Date.now(),
     }
 
@@ -782,26 +796,61 @@ export function ChatShellPage() {
                                 <div className={styles.bubbleHeader}>
                                   <span className={styles.bubbleSender}>{senderName}</span>
                                 </div>
-                                {m.text ? <div className={styles.bubbleText}>{m.text}</div> : null}
-                                {m.attachment ? (
-                                  <div className={styles.bubbleAttachment}>
+                                {m.attachment && isImageMimeType(m.attachment.mimeType) ? (
+                                  <div className={styles.imageMessage}>
                                     {m.attachment.downloadUrl ? (
                                       <a
-                                        className={styles.attachmentName}
                                         href={m.attachment.downloadUrl}
                                         target="_blank"
                                         rel="noreferrer"
+                                        className={styles.imageMessageLink}
                                       >
-                                        {m.attachment.name}
+                                        <img
+                                          src={m.attachment.downloadUrl}
+                                          alt={m.attachment.name}
+                                          className={styles.imageMessageImg}
+                                          loading="lazy"
+                                        />
                                       </a>
                                     ) : (
-                                      <div className={styles.attachmentName}>{m.attachment.name}</div>
+                                      <div className={styles.imageMessagePlaceholder}>
+                                        <Icon title="Image">
+                                          <path
+                                            d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"
+                                            fill="currentColor"
+                                          />
+                                        </Icon>
+                                        <span>Image unavailable</span>
+                                      </div>
                                     )}
-                                    <div className={styles.attachmentSize}>
-                                      {formatFileSize(m.attachment.size)}
-                                    </div>
+                                    {m.text && m.text.trim() ? (
+                                      <div className={styles.imageMessageCaption}>{m.text}</div>
+                                    ) : null}
                                   </div>
-                                ) : null}
+                                ) : (
+                                  <>
+                                    {m.text ? <div className={styles.bubbleText}>{m.text}</div> : null}
+                                    {m.attachment ? (
+                                      <div className={styles.bubbleAttachment}>
+                                        {m.attachment.downloadUrl ? (
+                                          <a
+                                            className={styles.attachmentName}
+                                            href={m.attachment.downloadUrl}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                          >
+                                            {m.attachment.name}
+                                          </a>
+                                        ) : (
+                                          <div className={styles.attachmentName}>{m.attachment.name}</div>
+                                        )}
+                                        <div className={styles.attachmentSize}>
+                                          {formatFileSize(m.attachment.size)}
+                                        </div>
+                                      </div>
+                                    ) : null}
+                                  </>
+                                )}
                                 <div className={styles.bubbleMeta}>
                                   {new Date(m.createdAt).toLocaleTimeString([], {
                                     hour: '2-digit',

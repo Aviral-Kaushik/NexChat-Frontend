@@ -537,6 +537,93 @@
   color: rgba(255, 255, 255, 0.96);
 }
 
+.imageMessage {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-top: 4px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: transparent;
+  width: 100%;
+  max-width: 280px;
+}
+
+.bubble[data-me='true'] .imageMessage {
+  background: transparent;
+}
+
+.imageMessageLink {
+  display: block;
+  width: 100%;
+  max-width: 280px;
+  cursor: pointer;
+  text-decoration: none;
+  line-height: 0;
+}
+
+.imageMessageImg {
+  width: 100%;
+  max-width: 280px;
+  height: auto;
+  max-height: 400px;
+  min-height: 150px;
+  object-fit: contain;
+  display: block;
+  border-radius: 0;
+  transition: opacity 150ms ease;
+  background: rgba(15, 23, 42, 0.02);
+}
+
+.imageMessageLink:hover .imageMessageImg {
+  opacity: 0.85;
+}
+
+.imageMessagePlaceholder {
+  width: 100%;
+  max-width: 300px;
+  height: 200px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--muted);
+  background: rgba(15, 23, 42, 0.06);
+  border-radius: 12px;
+}
+
+.bubble[data-me='true'] .imageMessagePlaceholder {
+  color: rgba(255, 255, 255, 0.70);
+  background: rgba(255, 255, 255, 0.10);
+}
+
+.imageMessagePlaceholder .icon {
+  width: 32px;
+  height: 32px;
+  opacity: 0.6;
+}
+
+.imageMessagePlaceholder span {
+  font-size: 12px;
+}
+
+.imageMessageCaption {
+  padding: 8px 12px;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--text);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: transparent;
+  border-top: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.bubble[data-me='true'] .imageMessageCaption {
+  color: rgba(255, 255, 255, 0.96);
+  border-top-color: rgba(255, 255, 255, 0.12);
+}
+
 .bubbleAttachment {
   margin-top: 8px;
   padding: 10px 10px;
