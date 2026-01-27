@@ -45,11 +45,33 @@ function parseLocalDateTime(input: string | null | undefined): number {
 }
 
 function resolveFrom(sender: string | null | undefined): ChatMessage['from'] {
-  const lowerSender = sender?.toLowerCase?.() ?? ''
-  if (lowerSender === 'system') return 'system'
-  const me = getUserName()?.toLowerCase?.() ?? ''
-  if (me && lowerSender === me) return 'me'
-  return 'other'
+  if (!sender) return 'other'
+  
+  const normalizedSender = sender.trim().toLowerCase()
+  if (normalizedSender === 'system') return 'system'
+  
+  const currentUser = getUserName()
+  if (!currentUser) {
+    if (import.meta.env.DEV) {
+      console.log('[resolveFrom] No current user found, sender:', sender)
+    }
+    return 'other'
+  }
+  
+  const normalizedCurrentUser = currentUser.trim().toLowerCase()
+  const isMe = normalizedCurrentUser && normalizedSender === normalizedCurrentUser
+  
+  if (import.meta.env.DEV) {
+    console.log('[resolveFrom]', {
+      sender,
+      normalizedSender,
+      currentUser,
+      normalizedCurrentUser,
+      isMe,
+    })
+  }
+  
+  return isMe ? 'me' : 'other'
 }
 
 function isImageMimeType(mimeType: string | undefined): boolean {
@@ -907,7 +929,12 @@ export function ChatShellPage() {
                           }}
                           aria-label="Remove attachment"
                         >
-                          ×
+                          <Icon title="Close">
+                            <path
+                              d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"
+                              fill="currentColor"
+                            />
+                          </Icon>
                         </button>
                       </div>
                     </div>
