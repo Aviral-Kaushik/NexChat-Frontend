@@ -19,3 +19,22 @@ export async function joinRoom(roomId: string): Promise<unknown> {
   return res.data
 }
 
+/** Response from POST /rooms/one-to-one - creates or returns a room for two users */
+export type OneToOneRoomResponse = {
+  roomId: string
+  [key: string]: unknown
+}
+
+export async function createOneToOneRoom(username: string): Promise<OneToOneRoomResponse> {
+  if (import.meta.env.DEV) console.log('[rooms][one-to-one] request', { username })
+  const res = await http.post<OneToOneRoomResponse>('/rooms/one-to-one', null, {
+    params: { username },
+  })
+  if (import.meta.env.DEV) console.log('[rooms][one-to-one] response', { status: res.status, data: res.data })
+  const data = res.data
+  if (data && typeof data === 'object' && typeof (data as OneToOneRoomResponse).roomId === 'string') {
+    return data as OneToOneRoomResponse
+  }
+  throw new Error('Invalid one-to-one room response: missing roomId')
+}
+

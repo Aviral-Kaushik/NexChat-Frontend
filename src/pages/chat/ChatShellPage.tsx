@@ -4,7 +4,7 @@ import styles from './ChatShellPage.module.css'
 import { connectRoomSocket, type RoomSocket } from '../../api/chatSocket'
 import { getApiErrorMessage } from '../../api/errors'
 import { getRoomMessages, type Message as BackendMessage, uploadFile } from '../../api/messages'
-import { createRoom, joinRoom } from '../../api/rooms'
+import { createRoom, createOneToOneRoom, joinRoom } from '../../api/rooms'
 import { getUserName } from '../../api/token'
 import { getUserChats, searchUsers, type SearchUser, type UserChatRoom } from '../../api/user'
 
@@ -38,6 +38,12 @@ type ChatMessage = {
 function chatIdToRoomId(chatId: string): string | null {
   if (!chatId.startsWith('room:')) return null
   return chatId.slice('room:'.length)
+}
+
+/** For one-to-one chat before room is created: user:username → username */
+function chatIdToUsername(chatId: string): string | null {
+  if (!chatId.startsWith('user:')) return null
+  return chatId.slice('user:'.length)
 }
 
 function parseLocalDateTime(input: string | null | undefined): number {
@@ -270,6 +276,16 @@ export function ChatShellPage() {
   const fileErrorTimeoutRef = useRef<number | null>(null)
   const fileErrorMessageIdsRef = useRef<Set<string>>(new Set())
 
+  /** After creating one-to-one room, send this message once STOMP is connected (text only). */
+  const [pendingOneToOneMessage, setPendingOneToOneMessage] = useState<{
+    roomId: string
+    text: string
+  } | null>(null)
+  const pendingOneToOneMessageRef = useRef<{ roomId: string; text: string } | null>(null)
+  useEffect(() => {
+    pendingOneToOneMessageRef.current = pendingOneToOneMessage
+  }, [pendingOneToOneMessage])
+
   const MIN_FILE_SIZE = 1024 // 1 KB
   const MAX_FILE_SIZE = 25 * 1024 * 1024 // 25 MB
 
@@ -318,7 +334,10 @@ export function ChatShellPage() {
   useEffect(() => {
     if (!selectedId) return
     const roomId = chatIdToRoomId(selectedId)
-    if (!roomId) return
+    if (!roomId) {
+      setMessagesLoadingFor(null)
+      return
+    }
 
     let cancelled = false
     setMessagesLoadingFor(selectedId)
@@ -375,6 +394,21 @@ export function ChatShellPage() {
     const currentChatId = selectedId
     const socket = connectRoomSocket({
       roomId,
+      onConnect: () => {
+        const pending = pendingOneToOneMessageRef.current
+        if (!pending || pending.roomId !== roomId) return
+        pendingOneToOneMessageRef.current = null
+        setPendingOneToOneMessage(null)
+        const sender = getUserName() ?? 'anonymous'
+        const payload = {
+          roomId,
+          sender,
+          content: pending.text,
+          type: 'TEXT',
+          timestamp: new Date().toISOString(),
+        }
+        socket.sendJson(`/app/sendMessage/${roomId}`, payload)
+      },
       onMessage: (body) => {
         if (import.meta.env.DEV) console.log('[ws] received', { roomId, body })
 
@@ -592,6 +626,59 @@ export function ChatShellPage() {
     if (!selectedId) return
     const text = draft.trim()
     if (text.length === 0 && !attachedFile) return
+
+    const oneToOneUsername = chatIdToUsername(selectedId)
+    if (oneToOneUsername) {
+      if (attachedFile) {
+        const sys: ChatMessage = {
+          id: `sys:${Date.now()}`,
+          chatId: selectedId,
+          from: 'system',
+          text: 'Send a text message first to start the chat, then you can attach files.',
+          createdAt: Date.now(),
+        }
+        setMessagesByChat((prev) => ({
+          ...prev,
+          [selectedId]: [...(prev[selectedId] ?? []), sys],
+        }))
+        return
+      }
+      try {
+        const { roomId } = await createOneToOneRoom(oneToOneUsername)
+        const otherName = selected?.name ?? oneToOneUsername
+        const newChatId = `room:${roomId}`
+        pendingOneToOneMessageRef.current = { roomId, text }
+        setPendingOneToOneMessage({ roomId, text })
+        setRooms((prev) => {
+          const withoutUserChat = prev.filter((c) => c.id !== selectedId)
+          const alreadyExists = prev.some((c) => c.id === newChatId) || chats.some((c) => c.id === newChatId)
+          if (alreadyExists) return withoutUserChat
+          return withoutUserChat.concat({
+            id: newChatId,
+            name: otherName,
+            lastMessage: 'No messages yet',
+            time: '',
+          })
+        })
+        setSelectedId(newChatId)
+        setDraft('')
+        setAttachedFile(null)
+        if (fileInputRef.current) fileInputRef.current.value = ''
+      } catch (err) {
+        const sys: ChatMessage = {
+          id: `sys:${Date.now()}`,
+          chatId: selectedId,
+          from: 'system',
+          text: getApiErrorMessage(err),
+          createdAt: Date.now(),
+        }
+        setMessagesByChat((prev) => ({
+          ...prev,
+          [selectedId]: [...(prev[selectedId] ?? []), sys],
+        }))
+      }
+      return
+    }
 
     const roomId = chatIdToRoomId(selectedId)
     if (!roomId) return
@@ -873,11 +960,32 @@ export function ChatShellPage() {
                   {searchResults.map((user) => {
                     const displayName = getSearchUserDisplayName(user)
                     const key = user.userId ?? user.userName ?? user.email ?? displayName
+                    const username = user.userName ?? user.name ?? user.email ?? displayName
+                    const userChatId = `user:${username}`
                     return (
-                      <div
+                      <button
                         key={key}
+                        type="button"
                         className={styles.searchResultItem}
                         role="listitem"
+                        onClick={() => {
+                          setRooms((prev) => {
+                            if (prev.some((c) => c.id === userChatId)) return prev
+                            return [
+                              {
+                                id: userChatId,
+                                name: displayName,
+                                lastMessage: 'No messages yet',
+                                time: '',
+                              },
+                              ...prev,
+                            ]
+                          })
+                          setSelectedId(userChatId)
+                          setIsSidebarOpen(false)
+                          setSearchQuery('')
+                          setSearchResults([])
+                        }}
                       >
                         <Avatar name={displayName} />
                         <div className={styles.searchResultMeta}>
@@ -886,7 +994,7 @@ export function ChatShellPage() {
                             <span className={styles.searchResultDetail}>{user.email}</span>
                           )}
                         </div>
-                      </div>
+                      </button>
                     )
                   })}
                 </div>

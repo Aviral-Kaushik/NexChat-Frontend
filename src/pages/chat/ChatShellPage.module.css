@@ -287,8 +287,11 @@
   border: 1px solid transparent;
   background: transparent;
   transition: background 150ms ease, border-color 150ms ease;
-  cursor: default;
+  cursor: pointer;
   color: var(--text);
+  width: 100%;
+  text-align: left;
+  font: inherit;
 }
 
 .searchResultItem:hover {
