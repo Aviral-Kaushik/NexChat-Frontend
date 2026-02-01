@@ -24,3 +24,29 @@ export async function getUserChats(): Promise<UserChatRoom[]> {
   }
   return []
 }
+
+/** User as returned by GET /user/search?q= */
+export type SearchUser = {
+  userId?: string
+  userName?: string
+  name?: string
+  email?: string
+}
+
+export type UserSearchResponse = SearchUser[] | { users?: SearchUser[] }
+
+export async function searchUsers(q: string): Promise<SearchUser[]> {
+  const trimmed = q.trim()
+  if (trimmed.length < 2) return []
+  if (import.meta.env.DEV) console.log('[user][search] request', { q: trimmed })
+  const res = await http.get<UserSearchResponse>('/user/search', {
+    params: { q: trimmed },
+  })
+  const data = res.data
+  if (import.meta.env.DEV) console.log('[user][search] response', { data })
+  if (Array.isArray(data)) return data
+  if (data && typeof data === 'object' && Array.isArray((data as { users?: SearchUser[] }).users)) {
+    return (data as { users: SearchUser[] }).users
+  }
+  return []
+}

@@ -6,7 +6,7 @@ import { getApiErrorMessage } from '../../api/errors'
 import { getRoomMessages, type Message as BackendMessage, uploadFile } from '../../api/messages'
 import { createRoom, joinRoom } from '../../api/rooms'
 import { getUserName } from '../../api/token'
-import { getUserChats, type UserChatRoom } from '../../api/user'
+import { getUserChats, searchUsers, type SearchUser, type UserChatRoom } from '../../api/user'
 
 type ChatPreview = {
   id: string
@@ -76,6 +76,11 @@ function mapRoomToChatPreview(room: UserChatRoom): ChatPreview {
     time,
     unreadCount: room.unreadCount,
   }
+}
+
+function getSearchUserDisplayName(user: SearchUser): string {
+  const name = user.userName?.trim() || user.name?.trim() || user.email?.trim()
+  return name || 'Unknown'
 }
 
 function resolveFrom(sender: string | null | undefined): ChatMessage['from'] {
@@ -227,6 +232,12 @@ export function ChatShellPage() {
   const [rooms, setRooms] = useState<ChatPreview[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState<SearchUser[]>([])
+  const [searchLoading, setSearchLoading] = useState(false)
+  const [searchFetched, setSearchFetched] = useState(false)
+  const searchDebounceRef = useRef<number | null>(null)
+  const searchRequestIdRef = useRef(0)
   const allItems = useMemo(() => [...rooms, ...chats], [rooms, chats])
 
   const selected = useMemo(
@@ -266,6 +277,43 @@ export function ChatShellPage() {
     if (!selectedId) return []
     return messagesByChat[selectedId] ?? []
   }, [messagesByChat, selectedId])
+
+  useEffect(() => {
+    const trimmed = searchQuery.trim()
+    if (trimmed.length < 2) {
+      setSearchResults([])
+      setSearchLoading(false)
+      setSearchFetched(false)
+      return
+    }
+    if (searchDebounceRef.current) window.clearTimeout(searchDebounceRef.current)
+    searchDebounceRef.current = window.setTimeout(() => {
+      searchDebounceRef.current = null
+      const requestId = ++searchRequestIdRef.current
+      setSearchLoading(true)
+      void (async () => {
+        try {
+          const list = await searchUsers(searchQuery)
+          if (requestId !== searchRequestIdRef.current) return
+          setSearchResults(list)
+          setSearchFetched(true)
+        } catch (err) {
+          if (requestId !== searchRequestIdRef.current) return
+          if (import.meta.env.DEV) console.error('[search] error', err)
+          setSearchResults([])
+          setSearchFetched(true)
+        } finally {
+          if (requestId === searchRequestIdRef.current) setSearchLoading(false)
+        }
+      })()
+    }, 250)
+    return () => {
+      if (searchDebounceRef.current) {
+        window.clearTimeout(searchDebounceRef.current)
+        searchDebounceRef.current = null
+      }
+    }
+  }, [searchQuery])
 
   useEffect(() => {
     if (!selectedId) return
@@ -781,13 +829,69 @@ export function ChatShellPage() {
             <input
               className={styles.search}
               type="text"
-              placeholder="Search chats"
-              aria-label="Search chats"
+              placeholder="Search users"
+              aria-label="Search users"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
 
           <div className={styles.chatList} role="list" aria-label="Chat list">
-            {chatsLoading ? (
+            {searchQuery.trim().length >= 2 ? (
+              searchLoading || !searchFetched ? (
+                <div className={styles.searchState} aria-live="polite" aria-busy={searchLoading}>
+                  <div className={styles.searchStateIcon}>
+                    <div className={styles.searchStateSpinner}>
+                      <Icon title="Searching">
+                        <path
+                          d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.31-8.86c-1.77-.45-2.34-.94-2.34-1.67 0-.84.79-1.43 2.1-1.43 1.38 0 1.9.66 1.9 1.57h1.6c0-.93-.56-2.01-2.1-2.01-1.65 0-2.2.81-2.2 1.43 0 1.25 1.15 1.76 2.55 2.19 1.8.55 2.34 1.18 2.34 1.95 0 .9-.79 1.52-2.1 1.52-1.5 0-2.05-.68-2.05-1.57H8.45c0 1.01.66 2.01 2.1 2.01 1.65 0 2.2-.81 2.2-1.43 0-1.25-1.15-1.76-2.55-2.19z"
+                          fill="currentColor"
+                        />
+                      </Icon>
+                    </div>
+                  </div>
+                  <p className={styles.searchStateTitle}>Searching…</p>
+                  <p className={styles.searchStateSubtitle}>
+                    {searchLoading ? 'Finding users matching your query' : 'Please wait'}
+                  </p>
+                </div>
+              ) : searchResults.length === 0 ? (
+                <div className={styles.searchState} aria-live="polite">
+                  <div className={styles.searchStateIcon}>
+                    <Icon title="No users">
+                      <path
+                        d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"
+                        fill="currentColor"
+                      />
+                    </Icon>
+                  </div>
+                  <p className={styles.searchStateTitle}>No users found</p>
+                  <p className={styles.searchStateSubtitle}>Try a different name or check the spelling</p>
+                </div>
+              ) : (
+                <div className={styles.searchResultsList} role="list">
+                  {searchResults.map((user) => {
+                    const displayName = getSearchUserDisplayName(user)
+                    const key = user.userId ?? user.userName ?? user.email ?? displayName
+                    return (
+                      <div
+                        key={key}
+                        className={styles.searchResultItem}
+                        role="listitem"
+                      >
+                        <Avatar name={displayName} />
+                        <div className={styles.searchResultMeta}>
+                          <span className={styles.searchResultName}>{displayName}</span>
+                          {user.email && user.email !== displayName && (
+                            <span className={styles.searchResultDetail}>{user.email}</span>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )
+            ) : chatsLoading ? (
               <div className={styles.chatListLoader} aria-live="polite" aria-busy="true">
                 <div className={styles.chatListLoaderSpinner}>
                   <Icon title="Loading">
