@@ -6,6 +6,7 @@ import { getApiErrorMessage } from '../../api/errors'
 import { getRoomMessages, type Message as BackendMessage, uploadFile } from '../../api/messages'
 import { createRoom, joinRoom } from '../../api/rooms'
 import { getUserName } from '../../api/token'
+import { getUserChats, type UserChatRoom } from '../../api/user'
 
 type ChatPreview = {
   id: string
@@ -43,6 +44,38 @@ function parseLocalDateTime(input: string | null | undefined): number {
   if (!input) return Date.now()
   const t = Date.parse(input)
   return Number.isFinite(t) ? t : Date.now()
+}
+
+/** Format timestamp for chat list: "2:18 PM", "Yesterday", "Mon", or "Sun" */
+function formatChatTime(isoString: string | null | undefined): string {
+  if (!isoString) return ''
+  const ms = parseLocalDateTime(isoString)
+  const d = new Date(ms)
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const yesterday = new Date(today)
+  yesterday.setDate(yesterday.getDate() - 1)
+  const then = new Date(d.getFullYear(), d.getMonth(), d.getDate())
+  if (then.getTime() === today.getTime()) {
+    return d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+  }
+  if (then.getTime() === yesterday.getTime()) return 'Yesterday'
+  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+  return days[d.getDay()] ?? ''
+}
+
+function mapRoomToChatPreview(room: UserChatRoom): ChatPreview {
+  const id = `room:${room.roomId}`
+  const name = room.name?.trim() || room.roomId
+  const lastMessage = room.lastMessage?.trim() || 'No messages yet'
+  const time = formatChatTime(room.lastMessageAt ?? room.updatedAt)
+  return {
+    id,
+    name,
+    lastMessage,
+    time,
+    unreadCount: room.unreadCount,
+  }
 }
 
 function resolveFrom(sender: string | null | undefined): ChatMessage['from'] {
@@ -169,48 +202,27 @@ function UserIcon() {
 }
 
 export function ChatShellPage() {
-  const chats: ChatPreview[] = useMemo(
-    () => [
-      {
-        id: 'c1',
-        name: 'Aviral',
-        lastMessage: 'Let’s ship the UI first, then wire APIs.',
-        time: '2:18 PM',
-        unreadCount: 2,
-        isOnline: true,
-      },
-      {
-        id: 'c2',
-        name: 'NexChat Team',
-        lastMessage: 'Sidebar polish looks great. Add empty state next.',
-        time: '1:04 PM',
-        unreadCount: 0,
-      },
-      {
-        id: 'c3',
-        name: 'Design',
-        lastMessage: 'Use a soft glass effect with subtle gradients.',
-        time: 'Yesterday',
-        unreadCount: 0,
-      },
-      {
-        id: 'c4',
-        name: 'Support',
-        lastMessage: 'We can add “typing…” and read receipts later.',
-        time: 'Mon',
-        unreadCount: 1,
-      },
-      {
-        id: 'c5',
-        name: 'Akash',
-        lastMessage: 'Bro, WhatsApp-like layout is ready?',
-        time: 'Sun',
-        unreadCount: 0,
-        isOnline: true,
-      },
-    ],
-    [],
-  )
+  const [chats, setChats] = useState<ChatPreview[]>([])
+  const [chatsLoading, setChatsLoading] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    setChatsLoading(true)
+    void (async () => {
+      try {
+        const list = await getUserChats()
+        if (cancelled) return
+        setChats(list.map(mapRoomToChatPreview))
+      } catch (err) {
+        if (cancelled) return
+        if (import.meta.env.DEV) console.error('[chats] load error', err)
+        setChats([])
+      } finally {
+        if (!cancelled) setChatsLoading(false)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [])
 
   const [rooms, setRooms] = useState<ChatPreview[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -775,40 +787,55 @@ export function ChatShellPage() {
           </div>
 
           <div className={styles.chatList} role="list" aria-label="Chat list">
-            {allItems.map((c) => {
-              const selected = c.id === selectedId
-              return (
-                <button
-                  key={c.id}
-                  type="button"
-                  className={styles.chatItem}
-                  data-selected={selected ? 'true' : 'false'}
-                  onClick={() => {
-                    setSelectedId(c.id)
-                    setIsSidebarOpen(false)
-                  }}
-                  role="listitem"
-                >
-                  <Avatar name={c.name} />
-                  <div className={styles.chatMeta}>
-                    <div className={styles.chatRow}>
-                      <div className={styles.chatName}>{c.name}</div>
-                      <div className={styles.chatTime}>{c.time}</div>
+            {chatsLoading ? (
+              <div className={styles.chatListLoader} aria-live="polite" aria-busy="true">
+                <div className={styles.chatListLoaderSpinner}>
+                  <Icon title="Loading">
+                    <path
+                      d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.31-8.86c-1.77-.45-2.34-.94-2.34-1.67 0-.84.79-1.43 2.1-1.43 1.38 0 1.9.66 1.9 1.57h1.6c0-.93-.56-2.01-2.1-2.01-1.65 0-2.2.81-2.2 1.43 0 1.25 1.15 1.76 2.55 2.19 1.8.55 2.34 1.18 2.34 1.95 0 .9-.79 1.52-2.1 1.52-1.5 0-2.05-.68-2.05-1.57H8.45c0 1.01.66 2.01 2.1 2.01 1.65 0 2.2-.81 2.2-1.43 0-1.25-1.15-1.76-2.55-2.19z"
+                      fill="currentColor"
+                    />
+                  </Icon>
+                </div>
+                <p className={styles.chatListLoaderText}>Loading chats…</p>
+                <p className={styles.chatListLoaderSubtext}>Fetching your conversations</p>
+              </div>
+            ) : (
+              allItems.map((c) => {
+                const selected = c.id === selectedId
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    className={styles.chatItem}
+                    data-selected={selected ? 'true' : 'false'}
+                    onClick={() => {
+                      setSelectedId(c.id)
+                      setIsSidebarOpen(false)
+                    }}
+                    role="listitem"
+                  >
+                    <Avatar name={c.name} />
+                    <div className={styles.chatMeta}>
+                      <div className={styles.chatRow}>
+                        <div className={styles.chatName}>{c.name}</div>
+                        <div className={styles.chatTime}>{c.time}</div>
+                      </div>
+                      <div className={styles.chatRow}>
+                        <div className={styles.chatPreview}>{c.lastMessage}</div>
+                        {c.unreadCount ? (
+                          <span className={styles.badge} aria-label={`${c.unreadCount} unread`}>
+                            {c.unreadCount}
+                          </span>
+                        ) : (
+                          <span className={styles.badgeSpacer} aria-hidden="true" />
+                        )}
+                      </div>
                     </div>
-                    <div className={styles.chatRow}>
-                      <div className={styles.chatPreview}>{c.lastMessage}</div>
-                      {c.unreadCount ? (
-                        <span className={styles.badge} aria-label={`${c.unreadCount} unread`}>
-                          {c.unreadCount}
-                        </span>
-                      ) : (
-                        <span className={styles.badgeSpacer} aria-hidden="true" />
-                      )}
-                    </div>
-                  </div>
-                </button>
-              )
-            })}
+                  </button>
+                )
+              })
+            )}
           </div>
         </aside>
 
