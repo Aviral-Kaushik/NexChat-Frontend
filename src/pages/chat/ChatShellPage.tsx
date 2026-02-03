@@ -1,4 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import styles from './ChatShellPage.module.css'
 
 import { connectRoomSocket, type RoomSocket } from '../../api/chatSocket'
@@ -299,6 +300,7 @@ function UserIcon() {
 }
 
 export function ChatShellPage() {
+  const navigate = useNavigate()
   const [chats, setChats] = useState<ChatPreview[]>([])
   const [chatsLoading, setChatsLoading] = useState(true)
 
@@ -975,7 +977,13 @@ export function ChatShellPage() {
           aria-label="Chats sidebar"
         >
           <div className={styles.sidebarTop}>
-            <button className={styles.profileButton} type="button" title="Profile">
+            <button
+              className={styles.profileButton}
+              type="button"
+              title="Profile"
+              onClick={() => navigate('/chats/profile')}
+              aria-label="Open profile"
+            >
               <span className={styles.profileMark} aria-hidden="true">
                 {(() => {
                   const name = getUserName() ?? 'U'

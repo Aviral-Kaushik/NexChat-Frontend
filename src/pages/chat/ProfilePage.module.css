@@ -1,0 +1,359 @@
+.page {
+  min-height: 100vh;
+  background: radial-gradient(1200px 700px at 10% 5%, rgba(13, 148, 136, 0.06), transparent 45%),
+    radial-gradient(900px 600px at 90% 95%, rgba(15, 118, 110, 0.05), transparent 45%),
+    linear-gradient(180deg, var(--bg) 0%, #e2e8f0 100%);
+  display: grid;
+  grid-template-rows: auto 1fr;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--surfaceSolid);
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.backButton {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surfaceSolid);
+  color: var(--muted);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  transition: background 150ms ease, color 150ms ease, border-color 150ms ease;
+}
+
+.backButton:hover {
+  background: var(--primarySoft);
+  color: var(--primary);
+  border-color: rgba(13, 148, 136, 0.2);
+}
+
+.backButton:active {
+  transform: scale(0.98);
+}
+
+.headerTitle {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+
+.headerSpacer {
+  width: 44px;
+  height: 44px;
+}
+
+/* Two-column layout: profile left, options right */
+.main {
+  overflow: auto;
+  padding: 24px 24px 32px;
+  display: grid;
+  grid-template-columns: minmax(280px, 380px) minmax(300px, 1fr);
+  gap: 28px;
+  align-items: start;
+  max-width: 1000px;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Left: profile info panel */
+.profilePanel {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  position: sticky;
+  top: 88px;
+}
+
+.profileCard {
+  padding: 28px 24px;
+  border-radius: 20px;
+  background: var(--surfaceSolid);
+  border: 1px solid var(--border);
+  box-shadow: 0 4px 20px rgba(15, 23, 42, 0.06);
+}
+
+.avatarWrap {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 18px;
+}
+
+.avatar {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  background: linear-gradient(145deg, var(--primary), var(--primary2));
+  color: #fff;
+  font-weight: 700;
+  font-size: 32px;
+  letter-spacing: -0.02em;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 8px 28px rgba(13, 148, 136, 0.28);
+  border: 3px solid rgba(255, 255, 255, 0.95);
+}
+
+.profileName {
+  margin: 0 0 6px;
+  font-size: 1.4rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  line-height: 1.2;
+  text-align: center;
+}
+
+.profileAbout {
+  margin: 0 0 20px;
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.4;
+  text-align: center;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.infoList {
+  margin: 0;
+  display: grid;
+  gap: 14px;
+}
+
+.infoRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  align-items: baseline;
+}
+
+.infoTerm {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.infoValue {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.appVersion {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted2);
+  text-align: center;
+}
+
+/* Right: options panel */
+.optionsPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+
+.section {
+  margin: 0;
+}
+
+.sectionTitle {
+  margin: 0 0 8px 6px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.optionList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-radius: 16px;
+  background: var(--surfaceSolid);
+  border: 1px solid var(--border);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+  overflow: hidden;
+}
+
+.optionItem {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: background 150ms ease;
+  border-bottom: 1px solid var(--border);
+}
+
+.optionList li:last-child .optionItem {
+  border-bottom: 0;
+}
+
+.optionItem:hover {
+  background: var(--surface2);
+}
+
+.optionItem:active {
+  background: var(--primarySoft);
+}
+
+.optionIconWrap {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: var(--primarySoft);
+  border: 1px solid rgba(13, 148, 136, 0.15);
+  display: grid;
+  place-items: center;
+  color: var(--primary);
+  flex-shrink: 0;
+}
+
+.optionIconWrap .icon {
+  width: 22px;
+  height: 22px;
+}
+
+.optionLabel {
+  flex: 1;
+  min-width: 0;
+}
+
+.optionItem .icon:last-of-type {
+  width: 20px;
+  height: 20px;
+  color: var(--muted2);
+  flex-shrink: 0;
+}
+
+.icon {
+  display: block;
+  width: 24px;
+  height: 24px;
+}
+
+.logoutButton {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 16px 20px;
+  border-radius: 16px;
+  border: 1px solid rgba(220, 38, 38, 0.25);
+  background: var(--dangerSoft);
+  color: var(--danger);
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 150ms ease, border-color 150ms ease, transform 120ms ease;
+}
+
+.logoutButton:hover {
+  background: rgba(220, 38, 38, 0.18);
+  border-color: rgba(220, 38, 38, 0.35);
+}
+
+.logoutButton:active {
+  transform: scale(0.99);
+}
+
+.logoutIconWrap {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: rgba(220, 38, 38, 0.15);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.logoutIconWrap .icon {
+  width: 22px;
+  height: 22px;
+}
+
+.logoutLabel {
+  color: inherit;
+}
+
+/* Mobile: stack profile above options */
+@media (max-width: 768px) {
+  .main {
+    grid-template-columns: 1fr;
+    padding: 20px 16px 28px;
+    gap: 24px;
+  }
+
+  .profilePanel {
+    position: static;
+  }
+
+  .profileCard {
+    padding: 24px 20px;
+  }
+
+  .avatar {
+    width: 80px;
+    height: 80px;
+    font-size: 26px;
+  }
+
+  .infoRow {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .main {
+    padding: 16px 12px 24px;
+  }
+
+  .profileCard {
+    padding: 20px 16px;
+  }
+
+  .avatar {
+    width: 72px;
+    height: 72px;
+    font-size: 22px;
+  }
+
+  .profileName {
+    font-size: 1.2rem;
+  }
+}
