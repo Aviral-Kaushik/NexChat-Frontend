@@ -1,33 +1,33 @@
 :root {
-  font-family: system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial, sans-serif;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Inter, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
 
-  /* Light theme (white + blue/green accents) */
+  /* Light theme – soft slate + teal accent */
   color-scheme: light;
 
-  --bg: #f6f8ff;
-  --bg2: #f8fafc;
-  --surface: rgba(255, 255, 255, 0.78);
+  --bg: #f1f5f9;
+  --bg2: #e2e8f0;
+  --surface: rgba(255, 255, 255, 0.92);
   --surfaceSolid: #ffffff;
-  --surface2: rgba(15, 23, 42, 0.035);
+  --surface2: rgba(15, 23, 42, 0.04);
 
-  --border: rgba(15, 23, 42, 0.10);
-  --borderStrong: rgba(15, 23, 42, 0.14);
+  --border: rgba(15, 23, 42, 0.08);
+  --borderStrong: rgba(15, 23, 42, 0.12);
 
-  --text: rgba(15, 23, 42, 0.92);
-  --muted: rgba(15, 23, 42, 0.70);
-  --muted2: rgba(15, 23, 42, 0.52);
+  --text: #0f172a;
+  --muted: #64748b;
+  --muted2: #94a3b8;
 
-  --primary: #2563eb;
-  --primary2: #1d4ed8;
-  --primarySoft: rgba(37, 99, 235, 0.14);
-  --success: #10b981;
-  --successSoft: rgba(16, 185, 129, 0.16);
-  --danger: #ef4444;
-  --dangerSoft: rgba(239, 68, 68, 0.14);
+  --primary: #0d9488;
+  --primary2: #0f766e;
+  --primarySoft: rgba(13, 148, 136, 0.12);
+  --success: #059669;
+  --successSoft: rgba(5, 150, 105, 0.14);
+  --danger: #dc2626;
+  --dangerSoft: rgba(220, 38, 38, 0.12);
 
-  --ring: rgba(37, 99, 235, 0.22);
+  --ring: rgba(13, 148, 136, 0.25);
 
   color: var(--text);
   background-color: var(--bg);
@@ -58,8 +58,8 @@ body {
   min-width: 320px;
   min-height: 100vh;
   color: var(--text);
-  background: radial-gradient(1100px 800px at 12% 12%, rgba(37, 99, 235, 0.12), transparent 58%),
-    radial-gradient(900px 700px at 88% 14%, rgba(16, 185, 129, 0.10), transparent 58%),
+  background: radial-gradient(1200px 800px at 20% 0%, rgba(13, 148, 136, 0.08), transparent 50%),
+    radial-gradient(1000px 600px at 80% 100%, rgba(15, 118, 110, 0.06), transparent 50%),
     linear-gradient(180deg, var(--bg) 0%, var(--bg2) 100%);
 }
 
@@ -91,5 +91,5 @@ button:focus-visible {
 }
 
 ::selection {
-  background: rgba(37, 99, 235, 0.22);
+  background: rgba(13, 148, 136, 0.2);
 }

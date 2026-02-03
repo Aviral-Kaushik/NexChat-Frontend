@@ -260,14 +260,26 @@ function Icon({
   )
 }
 
+/** Simple string hash for deterministic avatar color index (0–5). */
+function hashToColorIndex(str: string): number {
+  let h = 0
+  for (let i = 0; i < str.length; i++) {
+    h = (h << 5) - h + str.charCodeAt(i)
+    h |= 0
+  }
+  return Math.abs(h) % 6
+}
+
 function Avatar({ name }: { name: string }) {
   const initials = useMemo(() => {
     const parts = name.trim().split(/\s+/).slice(0, 2)
-    return parts.map((p) => p[0]?.toUpperCase()).join('')
+    return parts.map((p) => p[0]?.toUpperCase()).join('') || '?'
   }, [name])
 
+  const colorIndex = useMemo(() => hashToColorIndex(name || '0'), [name])
+
   return (
-    <span className={styles.avatar} aria-hidden="true">
+    <span className={styles.avatar} data-color={String(colorIndex)} aria-hidden="true">
       <span className={styles.avatarInner}>{initials}</span>
     </span>
   )
