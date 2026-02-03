@@ -15,6 +15,8 @@ type ChatPreview = {
   time: string
   unreadCount?: number
   isOnline?: boolean
+  /** True when this chat is a 1-to-1 room (show other member's name, not room ID) */
+  oneToOneRoom?: boolean
 }
 
 type RoomAction = 'create' | 'join'
@@ -72,7 +74,12 @@ function formatChatTime(isoString: string | null | undefined): string {
 
 function mapRoomToChatPreview(room: UserChatRoom): ChatPreview {
   const id = `room:${room.roomId}`
-  const name = room.name?.trim() || room.roomId
+  let name = room.name?.trim() || room.roomId
+  if (room.oneToOneRoom && Array.isArray(room.usernames) && room.usernames.length >= 2) {
+    const current = getUserName()?.trim().toLowerCase()
+    const other = room.usernames.find((u) => (u ?? '').trim().toLowerCase() !== current)
+    if (other?.trim()) name = other.trim()
+  }
   const lastMessage = room.lastMessage?.trim() || 'No messages yet'
   const time = formatChatTime(room.lastMessageAt ?? room.updatedAt)
   return {
@@ -81,6 +88,7 @@ function mapRoomToChatPreview(room: UserChatRoom): ChatPreview {
     lastMessage,
     time,
     unreadCount: room.unreadCount,
+    oneToOneRoom: room.oneToOneRoom === true,
   }
 }
 
@@ -223,7 +231,11 @@ export function ChatShellPage() {
       try {
         const list = await getUserChats()
         if (cancelled) return
-        setChats(list.map(mapRoomToChatPreview))
+        const validRooms = list.filter(
+          (room): room is UserChatRoom =>
+            room != null && typeof room === 'object' && typeof room.roomId === 'string'
+        )
+        setChats(validRooms.map(mapRoomToChatPreview))
       } catch (err) {
         if (cancelled) return
         if (import.meta.env.DEV) console.error('[chats] load error', err)
@@ -658,6 +670,7 @@ export function ChatShellPage() {
             name: otherName,
             lastMessage: 'No messages yet',
             time: '',
+            oneToOneRoom: true,
           })
         })
         setSelectedId(newChatId)
@@ -1074,11 +1087,13 @@ export function ChatShellPage() {
                   <div className={styles.placeholderTitle}>
                     <div className={styles.placeholderName}>{selected.name}</div>
                     <div className={styles.placeholderSub}>
-                      {selectedRoomId
-                        ? `Room ID · ${selectedRoomId}`
-                        : selected.isOnline
-                          ? 'Online'
-                          : 'Ready to chat'}
+                      {selected.oneToOneRoom
+                        ? 'Direct message'
+                        : selectedRoomId
+                          ? `Room ID · ${selectedRoomId}`
+                          : selected.isOnline
+                            ? 'Online'
+                            : 'Ready to chat'}
                     </div>
                   </div>
                 </div>

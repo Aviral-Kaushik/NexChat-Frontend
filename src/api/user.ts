@@ -8,6 +8,10 @@ export type UserChatRoom = {
   lastMessageAt?: string
   updatedAt?: string
   unreadCount?: number
+  /** Member usernames; for 1-to-1 rooms there are exactly 2 */
+  usernames?: string[]
+  /** True when this is a direct (1-to-1) chat between two users */
+  oneToOneRoom?: boolean
 }
 
 /** Response from GET /user/chats - list of rooms or { rooms: [...] } */
