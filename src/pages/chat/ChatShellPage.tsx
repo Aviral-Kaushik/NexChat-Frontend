@@ -6,7 +6,7 @@ import { getApiErrorMessage } from '../../api/errors'
 import { getRoomMessages, type Message as BackendMessage, uploadFile } from '../../api/messages'
 import { createRoom, createOneToOneRoom, joinRoom } from '../../api/rooms'
 import { getUserName } from '../../api/token'
-import { getUserChats, searchUsers, type SearchUser, type UserChatRoom } from '../../api/user'
+import { getUserChats, searchUsers, type SearchUser, type UserChatRoom, type UserChatRoomMessage } from '../../api/user'
 
 type ChatPreview = {
   id: string
@@ -72,6 +72,36 @@ function formatChatTime(isoString: string | null | undefined): string {
   return days[d.getDay()] ?? ''
 }
 
+const CHAT_PREVIEW_MAX_LENGTH = 45
+
+/** Get last message preview from room.messages array (from GET /user/chats). */
+function getLastMessageFromRoomMessages(messages: UserChatRoomMessage[] | null | undefined): {
+  lastMessage: string
+  lastMessageAt: string
+} {
+  if (!messages || messages.length === 0) {
+    return { lastMessage: 'No messages yet', lastMessageAt: '' }
+  }
+  const sorted = [...messages].sort(
+    (a, b) => parseLocalDateTime(a.timestamp) - parseLocalDateTime(b.timestamp)
+  )
+  const last = sorted[sorted.length - 1]
+  let text: string
+  if (last.type === 'FILE') {
+    text = last.file?.originalName?.trim() || '[File]'
+  } else {
+    const content = typeof last.content === 'string' ? last.content.trim() : ''
+    text =
+      content.length > CHAT_PREVIEW_MAX_LENGTH
+        ? content.slice(0, CHAT_PREVIEW_MAX_LENGTH) + '…'
+        : content || 'No messages yet'
+  }
+  return {
+    lastMessage: text,
+    lastMessageAt: formatChatTime(last.timestamp),
+  }
+}
+
 function mapRoomToChatPreview(room: UserChatRoom): ChatPreview {
   const id = `room:${room.roomId}`
   let name = room.name?.trim() || room.roomId
@@ -80,13 +110,18 @@ function mapRoomToChatPreview(room: UserChatRoom): ChatPreview {
     const other = room.usernames.find((u) => (u ?? '').trim().toLowerCase() !== current)
     if (other?.trim()) name = other.trim()
   }
-  const lastMessage = room.lastMessage?.trim() || 'No messages yet'
-  const time = formatChatTime(room.lastMessageAt ?? room.updatedAt)
+  const { lastMessage, lastMessageAt } =
+    Array.isArray(room.messages) && room.messages.length > 0
+      ? getLastMessageFromRoomMessages(room.messages)
+      : {
+          lastMessage: room.lastMessage?.trim() || 'No messages yet',
+          lastMessageAt: formatChatTime(room.lastMessageAt ?? room.updatedAt),
+        }
   return {
     id,
     name,
     lastMessage,
-    time,
+    time: lastMessageAt,
     unreadCount: room.unreadCount,
     oneToOneRoom: room.oneToOneRoom === true,
   }
@@ -140,6 +175,37 @@ function getImageUrl(downloadUrl: string | undefined): string | undefined {
   }
   // Otherwise, prepend the base URL
   return `http://localhost:8080/${downloadUrl}`
+}
+
+const MAX_PREVIEW_LENGTH = 45
+
+/** Get last message preview and time from backend message list for the chat sidebar. */
+function getLastMessagePreview(list: BackendMessage[] | null | undefined): {
+  lastMessage: string
+  lastMessageAt: string
+} {
+  if (!list || list.length === 0) {
+    return { lastMessage: 'No messages yet', lastMessageAt: '' }
+  }
+  const sorted = [...list].sort(
+    (a, b) => parseLocalDateTime(a.timestamp) - parseLocalDateTime(b.timestamp)
+  )
+  const last = sorted[sorted.length - 1]
+  let text: string
+  if (last.type === 'FILE' && last.file?.originalName) {
+    text = last.file.originalName
+  } else if (last.type === 'FILE') {
+    text = '[File]'
+  } else {
+    const content = typeof last.content === 'string' ? last.content.trim() : ''
+    text = content.length > MAX_PREVIEW_LENGTH
+      ? content.slice(0, MAX_PREVIEW_LENGTH) + '…'
+      : content || 'No messages yet'
+  }
+  return {
+    lastMessage: text,
+    lastMessageAt: formatChatTime(last.timestamp),
+  }
 }
 
 function mapBackendMessages(chatId: string, roomId: string, list: BackendMessage[]): ChatMessage[] {
@@ -359,11 +425,24 @@ export function ChatShellPage() {
         const list = await getRoomMessages(roomId)
         if (cancelled) return
 
-        const mapped = mapBackendMessages(selectedId, roomId, Array.isArray(list) ? list : [])
+        const rawList = Array.isArray(list) ? list : []
+        const mapped = mapBackendMessages(selectedId, roomId, rawList)
         setMessagesByChat((prev) => {
           if (mapped.length === 0) return prev
           return { ...prev, [selectedId]: mapped }
         })
+
+        const { lastMessage, lastMessageAt } = getLastMessagePreview(rawList)
+        setChats((prev) =>
+          prev.map((c) =>
+            c.id === selectedId ? { ...c, lastMessage, time: lastMessageAt } : c
+          )
+        )
+        setRooms((prev) =>
+          prev.map((c) =>
+            c.id === selectedId ? { ...c, lastMessage, time: lastMessageAt } : c
+          )
+        )
       } catch (err) {
         if (cancelled) return
         const msg: ChatMessage = {

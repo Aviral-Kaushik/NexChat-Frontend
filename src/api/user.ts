@@ -1,7 +1,19 @@
 import { http } from './http'
 
+/** Message as returned inside GET /user/chats room item (messages array) */
+export type UserChatRoomMessage = {
+  messageId?: string
+  roomId?: string
+  sender?: string
+  content?: string
+  type?: string
+  timestamp?: string
+  file?: { originalName?: string; storedName?: string; downloadUrl?: string; mimeType?: string; size?: number }
+}
+
 /** Room as returned by GET /user/chats */
 export type UserChatRoom = {
+  id?: string
   roomId: string
   name?: string
   lastMessage?: string
@@ -12,6 +24,8 @@ export type UserChatRoom = {
   usernames?: string[]
   /** True when this is a direct (1-to-1) chat between two users */
   oneToOneRoom?: boolean
+  /** Messages in this room; use last element for sidebar preview */
+  messages?: UserChatRoomMessage[]
 }
 
 /** Response from GET /user/chats - list of rooms or { rooms: [...] } */
