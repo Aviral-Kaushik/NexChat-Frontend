@@ -62,3 +62,23 @@ export async function login(body: LoginRequest): Promise<LoginResponse> {
   return res.data
 }
 
+/** POST /auth/forgot-password - sends reset link to email if user exists */
+export async function forgotPassword(email: string): Promise<void> {
+  if (import.meta.env.DEV) console.log('[auth][forgot-password] request', { email: email ? `${email.slice(0, 3)}…` : '' })
+  await http.post('/auth/forgot-password', null, { params: { email: email.trim() } })
+  if (import.meta.env.DEV) console.log('[auth][forgot-password] success')
+}
+
+export type ResetPasswordRequest = {
+  email: string
+  token: string
+  newPassword: string
+}
+
+/** POST /auth/reset-password - set new password using token from email link */
+export async function resetPassword(body: ResetPasswordRequest): Promise<void> {
+  if (import.meta.env.DEV) console.log('[auth][reset-password] request')
+  await http.post('/auth/reset-password', body)
+  if (import.meta.env.DEV) console.log('[auth][reset-password] success')
+}
+

@@ -2,6 +2,7 @@ import './App.css'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { ForgotPasswordPage } from './pages/auth/ForgotPasswordPage'
 import { LoginPage } from './pages/auth/LoginPage'
+import { ResetPasswordPage } from './pages/auth/ResetPasswordPage'
 import { SignupPage } from './pages/auth/SignupPage'
 import { ChatShellPage } from './pages/chat/ChatShellPage'
 import { ProfilePage } from './pages/chat/ProfilePage'
@@ -13,6 +14,7 @@ function App() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/signup" element={<SignupPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/chats" element={<ChatShellPage />} />
       <Route path="/chats/profile" element={<ProfilePage />} />
       <Route path="*" element={<Navigate to="/login" replace />} />
