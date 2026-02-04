@@ -357,3 +357,322 @@
     font-size: 1.2rem;
   }
 }
+
+/* ----- Change Password modal ----- */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(6px);
+  animation: modalFadeIn 200ms ease-out;
+}
+
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.modalPanel {
+  width: 100%;
+  max-width: 420px;
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  background: var(--surfaceSolid);
+  border-radius: 24px;
+  border: 1px solid var(--border);
+  box-shadow: 0 24px 48px rgba(15, 23, 42, 0.18), 0 12px 24px rgba(15, 23, 42, 0.12);
+  padding: 28px 24px;
+  animation: modalSlideIn 250ms cubic-bezier(0.21, 0.47, 0.32, 0.99);
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.modalHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 4px;
+}
+
+.modalTitle {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  line-height: 1.3;
+}
+
+.modalClose {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--muted);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  flex-shrink: 0;
+  transition: background 150ms ease, color 150ms ease, border-color 150ms ease;
+}
+
+.modalClose:hover {
+  background: var(--primarySoft);
+  color: var(--primary);
+  border-color: rgba(13, 148, 136, 0.2);
+}
+
+.modalClose .icon {
+  width: 22px;
+  height: 22px;
+}
+
+.modalSubtext {
+  margin: 0 0 20px;
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+/* Success state */
+.successIconWrap {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--successSoft);
+  color: var(--success);
+  display: grid;
+  place-items: center;
+  margin: 0 auto 20px;
+}
+
+.successIconWrap .icon {
+  width: 36px;
+  height: 36px;
+}
+
+/* Success view: center title and subtext */
+.modalPanel .successIconWrap ~ .modalTitle {
+  text-align: center;
+}
+
+.modalPanel .successIconWrap ~ .modalSubtext {
+  text-align: center;
+}
+
+.modalPanel .modalSubtext + .modalPrimaryButton {
+  margin-top: 8px;
+  width: 100%;
+}
+
+/* Form */
+.changePasswordForm {
+  display: grid;
+  gap: 16px;
+}
+
+.changePasswordForm .field {
+  display: grid;
+  gap: 8px;
+}
+
+.changePasswordForm .label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.changePasswordForm .inputWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  border-radius: 14px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  transition: border-color 150ms ease, box-shadow 150ms ease, background 150ms ease;
+}
+
+.changePasswordForm .inputWrap:focus-within {
+  border-color: rgba(13, 148, 136, 0.5);
+  box-shadow: 0 0 0 3px var(--primarySoft);
+  background: var(--surfaceSolid);
+}
+
+.changePasswordForm .input {
+  width: 100%;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--text);
+  font-size: 14px;
+  padding: 12px 14px;
+  padding-right: 64px;
+}
+
+.changePasswordForm .input::placeholder {
+  color: var(--muted2);
+}
+
+.changePasswordForm .toggle {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: 1px solid var(--border);
+  background: var(--surfaceSolid);
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: transform 120ms ease, background 150ms ease, border-color 150ms ease;
+}
+
+.changePasswordForm .toggle:hover:enabled {
+  background: var(--primarySoft);
+  border-color: rgba(13, 148, 136, 0.2);
+  color: var(--primary);
+}
+
+.changePasswordForm .toggle:active:enabled {
+  transform: translateY(-50%) scale(0.98);
+}
+
+.fieldError {
+  margin: 0;
+  font-size: 12px;
+  color: var(--danger);
+}
+
+.modalError {
+  margin: 0;
+  padding: 12px 14px;
+  font-size: 13px;
+  color: var(--danger);
+  background: var(--dangerSoft);
+  border-radius: 12px;
+  border: 1px solid rgba(220, 38, 38, 0.2);
+}
+
+.modalActions {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+  padding-top: 4px;
+}
+
+.modalSecondaryButton {
+  flex: 1;
+  padding: 12px 16px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 150ms ease, border-color 150ms ease, transform 120ms ease;
+}
+
+.modalSecondaryButton:hover:enabled {
+  background: var(--surfaceSolid);
+  border-color: var(--borderStrong);
+}
+
+.modalSecondaryButton:active:enabled {
+  transform: scale(0.99);
+}
+
+.modalSecondaryButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.modalPrimaryButton {
+  flex: 1;
+  padding: 12px 16px;
+  border-radius: 14px;
+  border: 0;
+  background: linear-gradient(145deg, var(--primary), var(--primary2));
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(13, 148, 136, 0.3);
+  transition: transform 120ms ease, filter 150ms ease, box-shadow 150ms ease;
+}
+
+.modalPrimaryButton:hover:enabled {
+  filter: brightness(1.05);
+  box-shadow: 0 6px 20px rgba(13, 148, 136, 0.35);
+}
+
+.modalPrimaryButton:active:enabled {
+  transform: translateY(1px);
+}
+
+.modalPrimaryButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+  box-shadow: none;
+}
+
+.loadingRow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #fff;
+  animation: spin 900ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .modalOverlay,
+  .modalPanel {
+    animation: none;
+  }
+  .changePasswordForm .inputWrap,
+  .changePasswordForm .toggle,
+  .modalClose,
+  .modalPrimaryButton,
+  .modalSecondaryButton {
+    transition: none;
+  }
+  .spinner {
+    animation: none;
+  }
+}

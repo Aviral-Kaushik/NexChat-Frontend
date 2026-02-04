@@ -1,8 +1,11 @@
-import { useEffect, useMemo } from 'react'
+import { useId, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import styles from './ProfilePage.module.css'
 
+import { changePassword } from '../../api/user'
+import { getApiErrorMessage } from '../../api/errors'
 import { clearToken, clearUserName, getToken, getUserName } from '../../api/token'
+import axios from 'axios'
 
 function Icon({ children, title }: { children: React.ReactNode; title: string }) {
   return (
@@ -18,9 +21,25 @@ function getInitials(name: string): string {
   return parts.map((p) => p[0]?.toUpperCase()).join('') || '?'
 }
 
+type ChangePasswordView = 'closed' | 'form' | 'success'
+
 export function ProfilePage() {
   const navigate = useNavigate()
   const name = getUserName() ?? 'User'
+
+  const [changePasswordView, setChangePasswordView] = useState<ChangePasswordView>('closed')
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false)
+  const [showNewPassword, setShowNewPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [isChangingPassword, setIsChangingPassword] = useState(false)
+  const [changePasswordError, setChangePasswordError] = useState<string | null>(null)
+
+  const currentPasswordId = useId()
+  const newPasswordId = useId()
+  const confirmPasswordId = useId()
 
   useEffect(() => {
     if (!getToken()) {
@@ -30,10 +49,57 @@ export function ProfilePage() {
 
   const initials = useMemo(() => getInitials(name), [name])
 
+  const isChangePasswordSubmitDisabled = useMemo(() => {
+    if (isChangingPassword) return true
+    if (currentPassword.length === 0 || newPassword.length === 0 || confirmPassword.length === 0) return true
+    if (newPassword !== confirmPassword) return true
+    return false
+  }, [isChangingPassword, currentPassword, newPassword, confirmPassword])
+
   function handleLogout() {
     clearToken()
     clearUserName()
     navigate('/login', { replace: true })
+  }
+
+  function openChangePassword() {
+    setChangePasswordView('form')
+    setCurrentPassword('')
+    setNewPassword('')
+    setConfirmPassword('')
+    setChangePasswordError(null)
+  }
+
+  function closeChangePassword() {
+    setChangePasswordView('closed')
+    setCurrentPassword('')
+    setNewPassword('')
+    setConfirmPassword('')
+    setChangePasswordError(null)
+  }
+
+  async function handleChangePasswordSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    if (isChangePasswordSubmitDisabled) return
+    if (newPassword !== confirmPassword) {
+      setChangePasswordError('New password and confirm password do not match.')
+      return
+    }
+    setIsChangingPassword(true)
+    setChangePasswordError(null)
+    try {
+      await changePassword({ currentPassword, newPassword })
+      setChangePasswordView('success')
+    } catch (err) {
+      if (import.meta.env.DEV) console.error('[profile][change-password] error', err)
+      if (axios.isAxiosError(err) && err.response?.status === 401) {
+        setChangePasswordError('Your session has expired. Please log in again.')
+      } else {
+        setChangePasswordError(getApiErrorMessage(err))
+      }
+    } finally {
+      setIsChangingPassword(false)
+    }
   }
 
   return (
@@ -95,7 +161,7 @@ export function ProfilePage() {
                 </button>
               </li>
               <li>
-                <button type="button" className={styles.optionItem}>
+                <button type="button" className={styles.optionItem} onClick={openChangePassword}>
                   <span className={styles.optionIconWrap}>
                     <Icon title="Lock">
                       <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H6.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z" fill="currentColor" />
@@ -212,6 +278,174 @@ export function ProfilePage() {
           </section>
         </div>
       </main>
+
+      {/* Change Password modal */}
+      {changePasswordView !== 'closed' && (
+        <div
+          className={styles.modalOverlay}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="change-password-title"
+          onClick={(e) => e.target === e.currentTarget && closeChangePassword()}
+        >
+          <div className={styles.modalPanel}>
+            {changePasswordView === 'success' ? (
+              <>
+                <div className={styles.successIconWrap} aria-hidden>
+                  <Icon title="Success">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" fill="currentColor" />
+                  </Icon>
+                </div>
+                <h2 id="change-password-title" className={styles.modalTitle}>
+                  Password changed
+                </h2>
+                <p className={styles.modalSubtext}>
+                  Your password has been updated successfully. You can close this and continue.
+                </p>
+                <button type="button" className={styles.modalPrimaryButton} onClick={closeChangePassword}>
+                  Done
+                </button>
+              </>
+            ) : (
+              <>
+                <div className={styles.modalHeader}>
+                  <h2 id="change-password-title" className={styles.modalTitle}>
+                    Change password
+                  </h2>
+                  <button
+                    type="button"
+                    className={styles.modalClose}
+                    onClick={closeChangePassword}
+                    aria-label="Close"
+                  >
+                    <Icon title="Close">
+                      <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" fill="currentColor" />
+                    </Icon>
+                  </button>
+                </div>
+                <p className={styles.modalSubtext}>
+                  Enter your current password and choose a new one. Make sure it&apos;s at least 6 characters.
+                </p>
+                <form className={styles.changePasswordForm} onSubmit={handleChangePasswordSubmit}>
+                  <div className={styles.field}>
+                    <label className={styles.label} htmlFor={currentPasswordId}>
+                      Current password
+                    </label>
+                    <div className={styles.inputWrap}>
+                      <input
+                        id={currentPasswordId}
+                        className={styles.input}
+                        type={showCurrentPassword ? 'text' : 'password'}
+                        autoComplete="current-password"
+                        placeholder="Enter current password"
+                        value={currentPassword}
+                        onChange={(e) => setCurrentPassword(e.target.value)}
+                        disabled={isChangingPassword}
+                      />
+                      <button
+                        type="button"
+                        className={styles.toggle}
+                        onClick={() => setShowCurrentPassword((v) => !v)}
+                        disabled={isChangingPassword}
+                        aria-label={showCurrentPassword ? 'Hide password' : 'Show password'}
+                      >
+                        {showCurrentPassword ? 'Hide' : 'Show'}
+                      </button>
+                    </div>
+                  </div>
+                  <div className={styles.field}>
+                    <label className={styles.label} htmlFor={newPasswordId}>
+                      New password
+                    </label>
+                    <div className={styles.inputWrap}>
+                      <input
+                        id={newPasswordId}
+                        className={styles.input}
+                        type={showNewPassword ? 'text' : 'password'}
+                        autoComplete="new-password"
+                        placeholder="Enter new password"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        disabled={isChangingPassword}
+                      />
+                      <button
+                        type="button"
+                        className={styles.toggle}
+                        onClick={() => setShowNewPassword((v) => !v)}
+                        disabled={isChangingPassword}
+                        aria-label={showNewPassword ? 'Hide password' : 'Show password'}
+                      >
+                        {showNewPassword ? 'Hide' : 'Show'}
+                      </button>
+                    </div>
+                  </div>
+                  <div className={styles.field}>
+                    <label className={styles.label} htmlFor={confirmPasswordId}>
+                      Confirm new password
+                    </label>
+                    <div className={styles.inputWrap}>
+                      <input
+                        id={confirmPasswordId}
+                        className={styles.input}
+                        type={showConfirmPassword ? 'text' : 'password'}
+                        autoComplete="new-password"
+                        placeholder="Confirm new password"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        disabled={isChangingPassword}
+                      />
+                      <button
+                        type="button"
+                        className={styles.toggle}
+                        onClick={() => setShowConfirmPassword((v) => !v)}
+                        disabled={isChangingPassword}
+                        aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                      >
+                        {showConfirmPassword ? 'Hide' : 'Show'}
+                      </button>
+                    </div>
+                  </div>
+                  {newPassword.length > 0 && confirmPassword.length > 0 && newPassword !== confirmPassword && (
+                    <p className={styles.fieldError} role="alert">
+                      New password and confirm password do not match.
+                    </p>
+                  )}
+                  {changePasswordError && (
+                    <p className={styles.modalError} role="alert">
+                      {changePasswordError}
+                    </p>
+                  )}
+                  <div className={styles.modalActions}>
+                    <button
+                      type="button"
+                      className={styles.modalSecondaryButton}
+                      onClick={closeChangePassword}
+                      disabled={isChangingPassword}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className={styles.modalPrimaryButton}
+                      disabled={isChangePasswordSubmitDisabled}
+                      aria-busy={isChangingPassword}
+                    >
+                      {isChangingPassword ? (
+                        <span className={styles.loadingRow}>
+                          <span className={styles.spinner} aria-hidden="true" />
+                          Updating…
+                        </span>
+                      ) : (
+                        'Update password'
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

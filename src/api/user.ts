@@ -68,3 +68,15 @@ export async function searchUsers(q: string): Promise<SearchUser[]> {
   }
   return []
 }
+
+/** Request body for POST /user/change-password */
+export type ChangePasswordRequest = {
+  currentPassword: string
+  newPassword: string
+}
+
+export async function changePassword(body: ChangePasswordRequest): Promise<void> {
+  if (import.meta.env.DEV) console.log('[user][change-password] request')
+  await http.post('/user/change-password', body)
+  if (import.meta.env.DEV) console.log('[user][change-password] success')
+}
