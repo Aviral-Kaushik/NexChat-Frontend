@@ -141,25 +141,12 @@ function resolveFrom(sender: string | null | undefined): ChatMessage['from'] {
   
   const currentUser = getUserName()
   if (!currentUser) {
-    if (import.meta.env.DEV) {
-      console.log('[resolveFrom] No current user found, sender:', sender)
-    }
+    console.log('[resolveFrom] No current user, sender:', sender)
     return 'other'
   }
-  
+
   const normalizedCurrentUser = currentUser.trim().toLowerCase()
   const isMe = normalizedCurrentUser && normalizedSender === normalizedCurrentUser
-  
-  if (import.meta.env.DEV) {
-    console.log('[resolveFrom]', {
-      sender,
-      normalizedSender,
-      currentUser,
-      normalizedCurrentUser,
-      isMe,
-    })
-  }
-  
   return isMe ? 'me' : 'other'
 }
 
@@ -318,7 +305,7 @@ export function ChatShellPage() {
         setChats(validRooms.map(mapRoomToChatPreview))
       } catch (err) {
         if (cancelled) return
-        if (import.meta.env.DEV) console.error('[chats] load error', err)
+        console.error('[chats] load error', err)
         setChats([])
       } finally {
         if (!cancelled) setChatsLoading(false)
@@ -407,7 +394,7 @@ export function ChatShellPage() {
           setSearchFetched(true)
         } catch (err) {
           if (requestId !== searchRequestIdRef.current) return
-          if (import.meta.env.DEV) console.error('[search] error', err)
+          console.error('[search] error', err)
           setSearchResults([])
           setSearchFetched(true)
         } finally {
@@ -515,7 +502,7 @@ export function ChatShellPage() {
         socket.sendJson(`/app/sendMessage/${roomId}`, payload)
       },
       onMessage: (body) => {
-        if (import.meta.env.DEV) console.log('[ws] received', { roomId, body })
+        console.log('[ws] received', { roomId, body })
 
         let parsed: unknown = null
         try {

@@ -32,14 +32,8 @@ export async function signup(body: SignupRequest): Promise<void> {
     email: body.email,
   }
 
-  if (import.meta.env.DEV) {
-    console.log('[auth][signup] request', { ...payload, password: redacted(payload.password) })
-  }
-
   const res = await http.post('/signup', payload)
-  if (import.meta.env.DEV) {
-    console.log('[auth][signup] response', { status: res.status, data: res.data })
-  }
+  console.log('[auth][signup]', { status: res.status })
 }
 
 export async function login(body: LoginRequest): Promise<LoginResponse> {
@@ -48,25 +42,15 @@ export async function login(body: LoginRequest): Promise<LoginResponse> {
     password: body.password,
   }
 
-  if (import.meta.env.DEV) {
-    console.log('[auth][login] request', { ...payload, password: redacted(payload.password) })
-  }
-
   const res = await http.post<LoginResponse>('/login', payload)
-  if (import.meta.env.DEV) {
-    console.log('[auth][login] response', {
-      status: res.status,
-      data: { ...res.data, token: tokenPreview(res.data?.token ?? '') },
-    })
-  }
+  console.log('[auth][login]', { status: res.status, token: tokenPreview(res.data?.token ?? '') })
   return res.data
 }
 
 /** POST /auth/forgot-password - sends reset link to email if user exists */
 export async function forgotPassword(email: string): Promise<void> {
-  if (import.meta.env.DEV) console.log('[auth][forgot-password] request', { email: email ? `${email.slice(0, 3)}…` : '' })
   await http.post('/auth/forgot-password', null, { params: { email: email.trim() } })
-  if (import.meta.env.DEV) console.log('[auth][forgot-password] success')
+  console.log('[auth][forgot-password] success')
 }
 
 export type ResetPasswordRequest = {
@@ -77,8 +61,7 @@ export type ResetPasswordRequest = {
 
 /** POST /auth/reset-password - set new password using token from email link */
 export async function resetPassword(body: ResetPasswordRequest): Promise<void> {
-  if (import.meta.env.DEV) console.log('[auth][reset-password] request')
   await http.post('/auth/reset-password', body)
-  if (import.meta.env.DEV) console.log('[auth][reset-password] success')
+  console.log('[auth][reset-password] success')
 }
 

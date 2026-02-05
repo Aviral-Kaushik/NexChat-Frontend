@@ -91,7 +91,7 @@ export function ProfilePage() {
       await changePassword({ currentPassword, newPassword })
       setChangePasswordView('success')
     } catch (err) {
-      if (import.meta.env.DEV) console.error('[profile][change-password] error', err)
+      console.error('[profile][change-password] error', err)
       if (axios.isAxiosError(err) && err.response?.status === 401) {
         setChangePasswordError('Your session has expired. Please log in again.')
       } else {

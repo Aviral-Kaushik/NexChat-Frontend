@@ -6,16 +6,14 @@ export type CreateRoomRequest = {
 
 export async function createRoom(roomId: string): Promise<unknown> {
   const payload: CreateRoomRequest = { roomId }
-  if (import.meta.env.DEV) console.log('[rooms][create] request', payload)
   const res = await http.post('/rooms', payload)
-  if (import.meta.env.DEV) console.log('[rooms][create] response', { status: res.status, data: res.data })
+  console.log('[rooms][create]', { roomId, status: res.status })
   return res.data
 }
 
 export async function joinRoom(roomId: string): Promise<unknown> {
-  if (import.meta.env.DEV) console.log('[rooms][join] request', { roomId })
   const res = await http.get(`/rooms/${encodeURIComponent(roomId)}`)
-  if (import.meta.env.DEV) console.log('[rooms][join] response', { status: res.status, data: res.data })
+  console.log('[rooms][join]', { roomId, status: res.status })
   return res.data
 }
 
@@ -26,11 +24,10 @@ export type OneToOneRoomResponse = {
 }
 
 export async function createOneToOneRoom(username: string): Promise<OneToOneRoomResponse> {
-  if (import.meta.env.DEV) console.log('[rooms][one-to-one] request', { username })
   const res = await http.post<OneToOneRoomResponse>('/rooms/one-to-one', null, {
     params: { username },
   })
-  if (import.meta.env.DEV) console.log('[rooms][one-to-one] response', { status: res.status, data: res.data })
+  console.log('[rooms][one-to-one]', { username, status: res.status })
   const data = res.data
   if (data && typeof data === 'object' && typeof (data as OneToOneRoomResponse).roomId === 'string') {
     return data as OneToOneRoomResponse

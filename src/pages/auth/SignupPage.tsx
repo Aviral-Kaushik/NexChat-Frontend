@@ -42,21 +42,14 @@ export function SignupPage() {
     setIsLoading(true)
     setErrorMessage(null)
     try {
-      if (import.meta.env.DEV) {
-        console.log('[ui][signup] submit', { userName: username, email })
-      }
       await signup({ username, password, email })
       const { token } = await login({ username, password })
-      if (import.meta.env.DEV) {
-        console.log('[ui][signup] login success', { tokenLength: token?.length ?? 0 })
-      }
+      console.log('[ui][signup] success', { userName: username })
       setToken(token)
       setUserName(username)
       navigate('/chats', { replace: true })
     } catch (err) {
-      if (import.meta.env.DEV) {
-        console.error('[ui][signup] error', err)
-      }
+      console.error('[ui][signup] error', err)
       setErrorMessage(getApiErrorMessage(err))
     } finally {
       setIsLoading(false)

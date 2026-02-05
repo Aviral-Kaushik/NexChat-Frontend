@@ -48,7 +48,7 @@ export function ResetPasswordPage() {
       })
       setSuccess(true)
     } catch (err) {
-      if (import.meta.env.DEV) console.error('[reset-password] error', err)
+      console.error('[reset-password] error', err)
       setErrorMessage(getApiErrorMessage(err))
     } finally {
       setIsLoading(false)

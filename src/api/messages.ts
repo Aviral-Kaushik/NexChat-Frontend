@@ -1,5 +1,4 @@
 import { http } from './http'
-import { getToken } from './token'
 
 export type MessageType = 'FILE' | 'TEXT'
 
@@ -29,31 +28,15 @@ export type FileUploadResponse = {
 }
 
 export async function getRoomMessages(roomId: string): Promise<Message[]> {
-  if (import.meta.env.DEV) console.log('[messages][list] request', { roomId })
   const res = await http.get<Message[]>(`/rooms/${encodeURIComponent(roomId)}/messages`)
-  if (import.meta.env.DEV) console.log('[messages][list] response', { status: res.status, data: res.data })
+  console.log('[messages][list]', { roomId, count: res.data?.length ?? 0 })
   return res.data
 }
 
 export async function uploadFile(roomId: string, file: File): Promise<FileUploadResponse> {
-  if (import.meta.env.DEV) console.log('[upload] request', { roomId, fileName: file.name, fileSize: file.size })
-  
   const formData = new FormData()
   formData.append('file', file)
-  
-  // The http interceptor automatically adds Authorization header with Bearer token
-  // For FormData, axios automatically detects it and sets Content-Type with boundary
-  // We need to ensure the default 'application/json' doesn't interfere
-  
-  // Log token before making request for debugging
-  const token = getToken()
-  if (import.meta.env.DEV) {
-    console.log('[upload] Token check:', {
-      hasToken: !!token,
-      tokenPreview: token ? `${token.substring(0, 20)}...` : 'NO TOKEN',
-    })
-  }
-  
+
   const res = await http.post<FileUploadResponse>(
     `/rooms/upload/${encodeURIComponent(roomId)}`,
     formData,
@@ -69,8 +52,7 @@ export async function uploadFile(roomId: string, file: File): Promise<FileUpload
       },
     }
   )
-  
-  if (import.meta.env.DEV) console.log('[upload] response', { status: res.status, data: res.data })
+  console.log('[upload]', { roomId, fileName: file.name, status: res.status })
   return res.data
 }
 

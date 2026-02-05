@@ -30,7 +30,7 @@ export function ForgotPasswordPage() {
       await forgotPassword(email.trim())
       setSuccess(true)
     } catch (err) {
-      if (import.meta.env.DEV) console.error('[forgot-password] error', err)
+      console.error('[forgot-password] error', err)
       setErrorMessage(getApiErrorMessage(err))
     } finally {
       setIsLoading(false)

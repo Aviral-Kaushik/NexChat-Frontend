@@ -32,10 +32,9 @@ export type UserChatRoom = {
 export type UserChatsResponse = UserChatRoom[] | { rooms?: UserChatRoom[] }
 
 export async function getUserChats(): Promise<UserChatRoom[]> {
-  if (import.meta.env.DEV) console.log('[user][chats] fetching')
   const res = await http.get<UserChatsResponse>('/user/chats')
   const data = res.data
-  if (import.meta.env.DEV) console.log('[user][chats] response', { data })
+  console.log('[user][chats]', { count: Array.isArray(data) ? data.length : (data as { rooms?: unknown[] })?.rooms?.length ?? 0 })
   if (Array.isArray(data)) return data
   if (data && typeof data === 'object' && Array.isArray((data as { rooms?: UserChatRoom[] }).rooms)) {
     return (data as { rooms: UserChatRoom[] }).rooms
@@ -56,12 +55,11 @@ export type UserSearchResponse = SearchUser[] | { users?: SearchUser[] }
 export async function searchUsers(q: string): Promise<SearchUser[]> {
   const trimmed = q.trim()
   if (trimmed.length < 2) return []
-  if (import.meta.env.DEV) console.log('[user][search] request', { q: trimmed })
   const res = await http.get<UserSearchResponse>('/user/search', {
     params: { q: trimmed },
   })
   const data = res.data
-  if (import.meta.env.DEV) console.log('[user][search] response', { data })
+  console.log('[user][search]', { q: trimmed, count: Array.isArray(data) ? data.length : (data as { users?: unknown[] })?.users?.length ?? 0 })
   if (Array.isArray(data)) return data
   if (data && typeof data === 'object' && Array.isArray((data as { users?: SearchUser[] }).users)) {
     return (data as { users: SearchUser[] }).users
@@ -76,7 +74,6 @@ export type ChangePasswordRequest = {
 }
 
 export async function changePassword(body: ChangePasswordRequest): Promise<void> {
-  if (import.meta.env.DEV) console.log('[user][change-password] request')
   await http.post('/user/change-password', body)
-  if (import.meta.env.DEV) console.log('[user][change-password] success')
+  console.log('[user][change-password] success')
 }

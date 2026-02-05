@@ -32,20 +32,13 @@ export function LoginPage() {
     setIsLoading(true)
     setErrorMessage(null)
     try {
-      if (import.meta.env.DEV) {
-        console.log('[ui][login] submit', { userName: username })
-      }
       const { token } = await login({ username, password })
-      if (import.meta.env.DEV) {
-        console.log('[ui][login] success', { tokenLength: token?.length ?? 0 })
-      }
+      console.log('[ui][login] success', { userName: username })
       setToken(token)
       setUserName(username)
       navigate('/chats', { replace: true })
     } catch (err) {
-      if (import.meta.env.DEV) {
-        console.error('[ui][login] error', err)
-      }
+      console.error('[ui][login] error', err)
       setErrorMessage(getApiErrorMessage(err))
     } finally {
       setIsLoading(false)
